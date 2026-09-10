@@ -21,9 +21,12 @@
 #ifdef USEGLEW
 #include <GL/glew.h>
 #endif
+//  OpenGL with prototypes for glext
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
 #include <GLUT/glut.h>
+// Tell Xcode IDE to not gripe about OpenGL deprecation
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #else
 #include <GL/glut.h>
 #endif
@@ -32,7 +35,7 @@ int th=-20;      //  Azimuth of view angle
 int ph=20;       //  Elevation of view angle
 int axes=1;      //  Display axes
 int color=0;     //  Color scheme
-const char* text[] = {"Grey-Gold","Blue-Orange","Time","White"};
+const char* text[] = {"Grey-Gold","Blue-Orange","Blue-Red","White"};
 double dim=50;
 
 /*  Lorenz Parameters  */
@@ -197,13 +200,13 @@ void reshape(int width,int height)
    glMatrixMode(GL_PROJECTION);
    //  Undo previous transformations
    glLoadIdentity();
-   //  Orthogonal projection, keep the whole attractor in view either way
+   //  Orthogonal projection
    double asp = (height>0) ? (double)width/height : 1;
-   //  Near and far are fixed so zooming in never clips the depth
+   // zooming in does not clip the depth
    if (asp>1)
-      glOrtho(-asp*dim,+asp*dim, -dim,+dim, -500,+500);
+      glOrtho(-asp*dim,+asp*dim, -dim,+dim, -600,+600);
    else
-      glOrtho(-dim,+dim, -dim/asp,+dim/asp, -500,+500);
+      glOrtho(-dim,+dim, -dim/asp,+dim/asp, -600,+600);
    //  Switch to manipulating the model matrix
    glMatrixMode(GL_MODELVIEW);
    //  Undo previous transformations
@@ -250,9 +253,9 @@ void key(unsigned char ch,int x,int y)
       axes = 1; color = 0;
    }
    //  Zoom in and out by changing the size of the world
-   else if (ch == '+' || ch == '=')
+   else if (ch == '+')
       dim -= 5;
-   else if (ch == '-' || ch == '_')
+   else if (ch == '-')
       dim += 5;
    //  Toggle axes
    else if (ch == 'a' || ch == 'A')
