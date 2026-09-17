@@ -31,7 +31,7 @@
 
 int th=20;          // Azimuth of view angle
 int ph=20;          // Elevation of view angle
-double dim=3.8;     // Size of the orthographic view
+double dim=4;     // Size of the orthographic view
 double t=0;         // Time within the six-second passing loop
 int lastTime=0;     // Previous GLUT elapsed time, in milliseconds
 int paused=0;       // Pause the animation
@@ -462,19 +462,19 @@ void special(int key,int x,int y)
  */
 void key(unsigned char ch,int x,int y)
 {
-//  Exit on ESC
+   //  Exit on ESC
    if (ch == 27)
       exit(0);
-   //  Reset view angle
+   //  Reset view angle and reset the parameters
    else if (ch == '0')
    {
-      th = 20; ph = 20; dim = 3.8;
+      th = 20; ph = 20; dim = 4;
    }
    //  Zoom in and out by changing the size of the world
-   else if (ch=='+' || ch=='=')
-      dim-=0.3;
-   else if (ch=='-' || ch=='_')
-      dim+=0.3;
+   else if (ch=='+')
+      dim -= 0.5;
+   else if (ch=='-')
+      dim += 0.5;
    else if (ch==' ')
    {
       paused=1-paused;
@@ -490,8 +490,10 @@ void key(unsigned char ch,int x,int y)
    glutPostRedisplay();
 }
 
-/* GLUT calls this routine between frames. */
-void idle(void)
+/*
+ *  GLUT calls this routine when there is nothing else to do
+ */
+void idle()
 {
    int now=glutGet(GLUT_ELAPSED_TIME);
    double dt=(now-lastTime)/1000.0;
