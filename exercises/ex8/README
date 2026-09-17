@@ -1,48 +1,15 @@
-ex8: Football Practice
+ex8: 3D Objects
 
-Built on Willem A. (Vlakkies) Schreuder's CSCI4229/5229 ex8 starter.
+Willem A. (Vlakkies) Schreuder
+CSCI4229/5229 Fall 2026
 
-Build and run (from this directory):
-  make
-  ./ex8
 
-Requires a C compiler, OpenGL, GLU, and GLUT/freeglut development libraries.
-The supplied makefile supports Linux, macOS, and MinGW.
+Demonstrates how to draw objects in 3D.
 
-Controls:
-  Arrow keys / left mouse drag   Orbit the camera around the field
-  + / - or mouse wheel          Zoom in / out
-  Space                         Pause / resume animation
-  R                             Replay from the beginning (retains pause state)
-  0                             Restore the initial camera
-  A                             Toggle world axes
-  Esc                           Exit
 
-The ten-second animation loops automatically: the blue player walks toward
-an association football (soccer ball), draws back the right leg, kicks,
-and follows through. The ball spins, follows diminishing ballistic bounces,
-and slows down. Animation uses elapsed seconds rather than frame counts.
-This is a choreographed animation, not a collision/rigid-body simulation.
-
-Geometry and assignment requirements:
-- Cube torso/hips, capped cylinder limbs, sphere head/joints and football.
-- All vertices are generated in ex8.c; no canned GLUT/GLU solids or models.
-- A generic articulated human is instantiated twice using translation,
-  rotation and scaling: the full-size blue kicker and a smaller orange
-  observer at a different location and orientation.
-- Custom closed cleats are lofted from six elliptical cross sections, with
-  varying width, height and center height, forming heel, instep and toe.
-  They supply an original non-primitive mesh beyond the class example solids.
-- Nested matrix transforms animate hips, knees, shoulders and elbows.
-- A perspective orbit camera provides multiple eye positions.
-- GL_DEPTH_TEST and a cleared depth buffer hide obstructed surfaces.
-- Surface normals and primitive/cleat-side UVs support later lighting and
-  texture work. No textures or external assets are required now.
-
-The original example's matrix-stack approach, sphere parameterization,
-text/error helpers, and display/reshape/keyboard callback structure remain
-as the foundation; its object-selection demo has been replaced by this scene.
-
-The assignment explicitly discourages simple primitive-only figures. This
-scene adds a custom cleat mesh and articulation, but instructor acceptance
-of the overall human concept should be checked if that restriction is strict.
+Key bindings
+  m/M        Cycle through different sets of objects
+  a          Toggle axes
+  arrows     Change view angle
+  0          Reset view angle
+  ESC        Exit

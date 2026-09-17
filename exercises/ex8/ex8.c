@@ -1,8 +1,14 @@
 /*
- * Football practice, built from ex8's matrix-stack objects and GLUT callbacks.
- * Original example: Willem A. (Vlakkies) Schreuder, CSCI4229/5229.
- * All solid geometry is generated here; no GLUT/GLU solid objects or assets.
- * Arrows / left drag: orbit; +/-: zoom; space: pause; R: replay; 0: view; A: axes.
+ *  3D Objects
+ *
+ *  Demonstrates how to draw objects in 3D.
+ *
+ *  Key bindings:
+ *  m/M        Cycle through different sets of objects
+ *  a          Toggle axes
+ *  arrows     Change view angle
+ *  0          Reset view angle
+ *  ESC        Exit
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,310 +17,778 @@
 #ifdef USEGLEW
 #include <GL/glew.h>
 #endif
+//  OpenGL with prototypes for glext
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
 #include <GLUT/glut.h>
+// Tell Xcode IDE to not gripe about OpenGL deprecation
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #else
 #include <GL/glut.h>
 #endif
-#define Cos(x) cos((x)*3.141592653589793/180)
-#define Sin(x) sin((x)*3.141592653589793/180)
 
-static double th=25,ph=22,distance=16,asp=1,timeScene=0;
-static int axes=0,paused=0,lastTime=0,drag=0,mx,my,width=1100,height=720;
-static const double contact=4.22,ballRadius=.32;
+int th=0;          //  Azimuth of view angle
+int ph=0;          //  Elevation of view angle
+double zh=0;       //  Rotation of teapot
+int axes=1;        //  Display axes
+int mode=0;        //  What to display
+const char* text[] = {"Cuboids","Spheres","FlatPlane Outline","FlatPlane Fill","SolidPlane","Icosahedron DrawElements","Icosahedron DrawArrays","Icosahedron VBO","Scene"};
 
-void Print(const char* format,...)
+//  Cosine and Sine in degrees
+#define Cos(x) (cos((x)*3.14159265/180))
+#define Sin(x) (sin((x)*3.14159265/180))
+
+/*
+ *  Convenience routine to output raster text
+ *  Use VARARGS to make this more flexible
+ */
+#define LEN 8192  //  Maximum length of text string
+void Print(const char* format , ...)
 {
-   char buf[1024];
+   char    buf[LEN];
+   char*   ch=buf;
    va_list args;
+   //  Turn the parameters into a character string
    va_start(args,format);
-   vsnprintf(buf,sizeof(buf),format,args);
+   vsnprintf(buf,LEN,format,args);
    va_end(args);
-   for (char* ch=buf;*ch;ch++) glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*ch);
+   //  Display the characters one at a time at the current raster position
+   while (*ch)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*ch++);
 }
+
+/*
+ *  Check for OpenGL errors
+ */
 void ErrCheck(const char* where)
 {
-   GLenum err=glGetError();
+   int err = glGetError();
    if (err) fprintf(stderr,"ERROR: %s [%s]\n",gluErrorString(err),where);
 }
-static double clamp(double v,double lo,double hi) { return fmax(lo,fmin(hi,v)); }
-static double blend(double a,double b,double u)
+
+/*
+ *  Print message to stderr and exit
+ */
+void Fatal(const char* format , ...)
 {
-   u=clamp(u,0,1); return a+(b-a)*u*u*(3-2*u);
+   va_list args;
+   va_start(args,format);
+   vfprintf(stderr,format,args);
+   va_end(args);
+   exit(1);
 }
 
-/* Generic unit cube from ex8, now with surface normals and inherited color. */
-static void cube(double x,double y,double z,double dx,double dy,double dz,double angle)
+/*
+ *  Draw a cube
+ *     at (x,y,z)
+ *     dimensions (dx,dy,dz)
+ *     rotated th about the y axis
+ */
+static void cube(double x,double y,double z,
+                 double dx,double dy,double dz,
+                 double th)
 {
-   static const double v[8][3]={{-1,-1,-1},{1,-1,-1},{1,1,-1},{-1,1,-1},
-                               {-1,-1,1},{1,-1,1},{1,1,1},{-1,1,1}};
-   static const int f[6][4]={{4,5,6,7},{1,0,3,2},{5,1,2,6},{0,4,7,3},{7,6,2,3},{0,1,5,4}};
-   static const double n[6][3]={{0,0,1},{0,0,-1},{1,0,0},{-1,0,0},{0,1,0},{0,-1,0}};
+   //  Save transformation
    glPushMatrix();
-   glTranslated(x,y,z); glRotated(angle,0,1,0); glScaled(dx,dy,dz);
+   //  Offset
+   glTranslated(x,y,z);
+   glRotated(th,0,1,0);
+   glScaled(dx,dy,dz);
+   //  Cube
    glBegin(GL_QUADS);
-   for (int i=0;i<6;i++)
-   {
-      glNormal3dv(n[i]);
-      for (int j=0;j<4;j++) { glTexCoord2d(j==1 || j==2,j>=2); glVertex3dv(v[f[i][j]]); }
-   }
-   glEnd(); glPopMatrix();
-}
-/* Ex8 latitude/longitude sphere, with normals and UVs for later texturing. */
-static void Vertex(double longitude,double latitude)
-{
-   double x=Sin(longitude)*Cos(latitude),y=Sin(latitude),z=Cos(longitude)*Cos(latitude);
-   glNormal3d(x,y,z); glTexCoord2d(longitude/360,(latitude+90)/180); glVertex3d(x,y,z);
-}
-static void sphere(double x,double y,double z,double r,int football)
-{
-   glPushMatrix(); glTranslated(x,y,z); glScaled(r,r,r);
-   for (int p=-90;p<90;p+=10)
-      for (int t=0;t<360;t+=10)
-      {
-         if (football)
-         {
-            /* Alternating stitched-looking panels on the generated sphere. */
-            int dark=((t/30+(p+90)/30)%3==0);
-            glColor3f(dark?.055:.94,dark?.075:.96,dark?.10:.90);
-         }
-         glBegin(GL_QUADS);
-         Vertex(t,p); Vertex(t,p+10); Vertex(t+10,p+10); Vertex(t+10,p);
-         glEnd();
-      }
+   //  Front
+   glColor3f(1,0,0);
+   glVertex3f(-1,-1, 1);
+   glVertex3f(+1,-1, 1);
+   glVertex3f(+1,+1, 1);
+   glVertex3f(-1,+1, 1);
+   //  Back
+   glColor3f(0,0,1);
+   glVertex3f(+1,-1,-1);
+   glVertex3f(-1,-1,-1);
+   glVertex3f(-1,+1,-1);
+   glVertex3f(+1,+1,-1);
+   //  Right
+   glColor3f(1,1,0);
+   glVertex3f(+1,-1,+1);
+   glVertex3f(+1,-1,-1);
+   glVertex3f(+1,+1,-1);
+   glVertex3f(+1,+1,+1);
+   //  Left
+   glColor3f(0,1,0);
+   glVertex3f(-1,-1,-1);
+   glVertex3f(-1,-1,+1);
+   glVertex3f(-1,+1,+1);
+   glVertex3f(-1,+1,-1);
+   //  Top
+   glColor3f(0,1,1);
+   glVertex3f(-1,+1,+1);
+   glVertex3f(+1,+1,+1);
+   glVertex3f(+1,+1,-1);
+   glVertex3f(-1,+1,-1);
+   //  Bottom
+   glColor3f(1,0,1);
+   glVertex3f(-1,-1,-1);
+   glVertex3f(+1,-1,-1);
+   glVertex3f(+1,-1,+1);
+   glVertex3f(-1,-1,+1);
+   //  End
+   glEnd();
+   //  Undo transformations
    glPopMatrix();
 }
-/* Closed cylinder: radius one, runs from y=0 to y=-1. */
-static void cylinder(double radius,double length)
+
+/*
+ *  Draw vertex in polar coordinates
+ */
+static void Vertex(double th,double ph)
 {
-   glPushMatrix(); glScaled(radius,length,radius);
-   glBegin(GL_QUAD_STRIP);
-   for (int a=0;a<=360;a+=15)
+   glColor3f(Cos(th)*Cos(th) , Sin(ph)*Sin(ph) , Sin(th)*Sin(th));
+   glVertex3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
+}
+
+/*
+ *  Draw a sphere (version 1)
+ *     at (x,y,z)
+ *     radius (r)
+ */
+static void sphere1(double x,double y,double z,double r)
+{
+   const int d=15;
+
+   //  Save transformation
+   glPushMatrix();
+   //  Offset and scale
+   glTranslated(x,y,z);
+   glScaled(r,r,r);
+
+   //  South pole cap
+   glBegin(GL_TRIANGLE_FAN);
+   Vertex(0,-90);
+   for (int th=0;th<=360;th+=d)
    {
-      glNormal3d(Cos(a),0,Sin(a));
-      glTexCoord2d(a/360.,0); glVertex3d(Cos(a),0,Sin(a));
-      glTexCoord2d(a/360.,1); glVertex3d(Cos(a),-1,Sin(a));
+      Vertex(th,d-90);
    }
    glEnd();
-   for (int end=0;end<2;end++)
-   {
-      glNormal3d(0,end?-1:1,0);
-      glBegin(GL_TRIANGLE_FAN); glTexCoord2d(.5,.5); glVertex3d(0,-end,0);
-      for (int a=0;a<=360;a+=15)
-      {
-         double z=(end?1:-1)*Sin(a);
-         glTexCoord2d(.5+.5*Cos(a),.5+.5*z); glVertex3d(Cos(a),-end,z);
-      }
-      glEnd();
-   }
-   glPopMatrix();
-}
-/* Custom closed cleat: lofted elliptical cross sections from heel to toe.
- * This asymmetric, changing-height mesh is not a scaled primitive.
- * End caps and analytic ring normals keep it solid and ready for texture UVs.
- */
-static void cleat(void)
-{
-   const double x[]={-.19,-.13,.02,.20,.40,.47};
-   const double w[]={.07,.145,.15,.145,.11,.025};
-   const double h[]={.06,.15,.16,.10,.065,.025};
-   const double y[]={.095,.16,.17,.11,.075,.07};
-   for (int i=0;i<5;i++)
+
+   //  Latitude bands
+   for (int ph=d-90;ph<=90-2*d;ph+=d)
    {
       glBegin(GL_QUAD_STRIP);
-      for (int a=0;a<=360;a+=20)
-         for (int j=i;j<=i+1;j++)
-         {
-            double ny=Cos(a)/h[j],nz=Sin(a)/w[j];
-            double nx=-((y[i+1]-y[i])*ny+(h[i+1]-h[i])*Cos(a)*ny+
-                        (w[i+1]-w[i])*Sin(a)*nz)/(x[i+1]-x[i]);
-            glNormal3d(nx,ny,nz); glTexCoord2d(j/5.,a/360.);
-            glVertex3d(x[j],y[j]+h[j]*Cos(a),w[j]*Sin(a));
-         }
+      for (int th=0;th<=360;th+=d)
+      {
+         Vertex(th,ph);
+         Vertex(th,ph+d);
+      }
       glEnd();
    }
-   for (int k=0;k<2;k++)
+
+   //  North pole cap
+   glBegin(GL_TRIANGLE_FAN);
+   Vertex(0,90);
+   for (int th=0;th<=360;th+=d)
    {
-      int j=k?5:0;
-      glNormal3d(k?1:-1,0,0); glBegin(GL_TRIANGLE_FAN);
-      glVertex3d(x[j],y[j],0);
-      for (int a=0;a<=360;a+=20) glVertex3d(x[j],y[j]+h[j]*Cos(a),w[j]*Sin(k?-a:a));
-      glEnd();
-   }
-   glColor3f(.9,.95,.25);
-   for (int i=0;i<3;i++) cube(.04+i*.08,.245-i*.03,0,.018,.012,.115,0);
-}
-static void leg(double z,double hip,double knee)
-{
-   glPushMatrix(); glTranslated(0,1.82,z); glRotated(hip,0,0,1);
-   glColor3f(.035,.075,.15); sphere(0,0,0,.18,0); cylinder(.16,.78);
-   glTranslated(0,-.78,0); glRotated(knee,0,0,1);
-   glColor3f(.77,.49,.31); sphere(0,0,0,.145,0); cylinder(.115,.78);
-   glColor3f(.92,.94,.90);
-   glPushMatrix(); glTranslated(0,-.35,0); cylinder(.122,.43); glPopMatrix();
-   glTranslated(0,-.88,0); glColor3f(.10,.13,.19); cleat();
-   glPopMatrix();
-}
-static void arm(double z,double swing)
-{
-   glPushMatrix(); glTranslated(0,2.72,z); glRotated(swing,0,0,1);
-   sphere(0,0,0,.19,0); cylinder(.16,.30);
-   glTranslated(0,-.30,0); glColor3f(.77,.49,.31); cylinder(.115,.30);
-   glTranslated(0,-.30,0); sphere(0,0,0,.12,0); glRotated(18,0,0,1);
-   cylinder(.10,.46); sphere(0,-.49,0,.13,0); glPopMatrix();
-}
-/* Generic articulated human, reused with different position, scale and yaw. */
-static void human(double x,double z,double scale,double yaw,int active)
-{
-   double walk=0,left=0,right=0,knee=0;
-   if (active && timeScene<3.6)
-   {
-      walk=sin(timeScene*2*3.141592653589793/0.9)*26;
-      walk*=clamp((3.6-timeScene)/.4,0,1); left=-walk; right=walk;
-   }
-   else if (active)
-   {
-      if (timeScene<4) right=blend(0,-28,(timeScene-3.6)/.4);
-      else if (timeScene<contact) right=blend(-28,24,(timeScene-4)/.22);
-      else if (timeScene<4.48) right=blend(24,65,(timeScene-contact)/.26);
-      else right=blend(65,0,(timeScene-4.48)/.85);
-      knee=timeScene<4 ? -12*Sin(180*clamp((timeScene-3.6)/.4,0,1)) : 0;
-   }
-   glPushMatrix(); glTranslated(x,0,z); glRotated(yaw,0,1,0); glScaled(scale,scale,scale);
-   leg(.23,left,0); leg(-.23,right,knee);
-   glColor3f(.035,.075,.15); cube(0,1.85,0,.22,.20,.40,0);
-   glColor3f(active?.12:.95,active?.38:.38,active?.86:.12);
-   cube(0,2.35,0,.24,.43,.39,0);
-   arm(.48,walk); glColor3f(active?.12:.95,active?.38:.38,active?.86:.12); arm(-.48,-walk);
-   glColor3f(.77,.49,.31); sphere(0,2.90,0,.16,0); sphere(0,3.22,0,.31,0);
-   sphere(.29,3.21,0,.075,0);
-   glColor3f(.04,.045,.055); sphere(.274,3.30,.12,.038,0); sphere(.274,3.30,-.12,.038,0);
-   /* Jersey stripe makes facing direction visible. */
-   glColor3f(.95,.95,.88); cube(.247,2.4,0,.009,.30,.045,0);
-   glPopMatrix();
-}
-static void ballPosition(double* x,double* y,double* rotation)
-{
-   double t=fmax(0,timeScene-contact),remain=t,v=3.1,bounce=0;
-   *x=.8+3.6*(1-exp(-.65*t))/.65; *y=ballRadius; *rotation=-(*x-.8)/ballRadius*180/3.141592653589793;
-   /* Piecewise ballistic arcs: each bounce loses vertical energy. */
-   for (int i=0;i<6;i++)
-   {
-      double flight=2*v/9.81;
-      if (remain<=flight) { bounce=v*remain-4.905*remain*remain; break; }
-      remain-=flight; v*=.52;
-   }
-   *y+=fmax(0,bounce);
-}
-static void field(void)
-{
-   for (int i=0;i<12;i++)
-   {
-      glColor3f(.10f,.30f+.025f*(i%2),.17f);
-      cube(-5.5+i,-.12,0,.5,.12,3.8,0);
-   }
-   glColor3f(.83,.90,.79);
-   cube(.0,.006,-3.35,5.6,.006,.025,0); cube(.0,.006,3.35,5.6,.006,.025,0);
-   cube(-5.6,.006,0,.025,.006,3.35,0); cube(5.6,.006,0,.025,.006,3.35,0);
-   cube(0,.006,0,.025,.006,3.35,0);
-   glNormal3d(0,1,0); glBegin(GL_QUAD_STRIP);
-   for (int a=0;a<=360;a+=5)
-   {
-      glVertex3d(1.20*Cos(a),.014,1.20*Sin(a)); glVertex3d(1.24*Cos(a),.014,1.24*Sin(a));
+      Vertex(th,90-d);
    }
    glEnd();
+
+   //  Undo transformations
+   glPopMatrix();
 }
-void display(void)
+
+/*
+ *  Draw a sphere (version 2)
+ *     at (x,y,z)
+ *     radius (r)
+ */
+static void sphere2(double x,double y,double z,double r)
 {
-   double bx,by,roll;
-   GLfloat light[]={-3,8,5,1};
-   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT); glEnable(GL_DEPTH_TEST);
+   const int d=15;
+
+   //  Save transformation
+   glPushMatrix();
+   //  Offset and scale
+   glTranslated(x,y,z);
+   glScaled(r,r,r);
+
+   //  Latitude bands
+   for (int ph=-90;ph<90;ph+=d)
+   {
+      glBegin(GL_QUAD_STRIP);
+      for (int th=0;th<=360;th+=d)
+      {
+         Vertex(th,ph);
+         Vertex(th,ph+d);
+      }
+      glEnd();
+   }
+
+   //  Undo transformations
+   glPopMatrix();
+}
+
+/*
+ *  Draw a airplane shaped polygon at (x,y,z)
+ */
+static void FlatPlane(int type,double x,double y,double z)
+{
+   //  Save transformation
+   glPushMatrix();
+   //  Offset
+   glTranslated(x,y,z);
+   //  Fuselage and wings
+   glColor3f(1,1,0); 
+   glBegin(type);
+   glVertex2f( 1.0, 0.0);
+   glVertex2f( 0.8, 0.1);
+   glVertex2f( 0.0, 0.1);
+   glVertex2f(-1.0, 0.5);
+   glVertex2f(-1.0,-0.5);
+   glVertex2f( 0.0,-0.1);
+   glVertex2f( 0.8,-0.1);
+   glEnd();
+   //  Vertical tail
+   glColor3f(1,0,0);
+   glBegin(type);
+   glVertex3f(-1.0, 0.0,0.0);
+   glVertex3f(-1.0, 0.0,0.5);
+   glVertex3f(-0.5, 0.0,0.0);
+   glEnd();
+   //  Undo transformations
+   glPopMatrix();
+}
+
+/*
+ *  Helper function for SolidPlane
+ */
+static void Canopy(double th,double ph)
+{
+   glVertex3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
+}
+
+/*
+ *  Draw solid airplane
+ *    at (x,y,z)
+ *    nose towards (dx,dy,dz)
+ *    up towards (ux,uy,uz)
+ *    size
+ */
+static void SolidPlane(double x,double y,double z,
+                       double dx,double dy,double dz,
+                       double ux,double uy, double uz,
+                       double s)
+{
+   // Dimensions used to size airplane
+   const double wid=0.05;
+   const double nose=+0.50;
+   const double cone= 0.20;
+   const double wing= 0.00;
+   const double strk=-0.20;
+   const double tail=-0.50;
+   //  Unit vector in direction of flght
+   double D0 = sqrt(dx*dx+dy*dy+dz*dz);
+   double X0 = dx/D0;
+   double Y0 = dy/D0;
+   double Z0 = dz/D0;
+   //  Unit vector in "up" direction
+   double D1 = sqrt(ux*ux+uy*uy+uz*uz);
+   double X1 = ux/D1;
+   double Y1 = uy/D1;
+   double Z1 = uz/D1;
+   //  Cross product gives the third vector
+   double X2 = Y0*Z1-Y1*Z0;
+   double Y2 = Z0*X1-Z1*X0;
+   double Z2 = X0*Y1-X1*Y0;
+   //  Rotation matrix
+   double mat[16];
+   mat[0] = X0;   mat[4] = X1;   mat[ 8] = X2;   mat[12] = 0;
+   mat[1] = Y0;   mat[5] = Y1;   mat[ 9] = Y2;   mat[13] = 0;
+   mat[2] = Z0;   mat[6] = Z1;   mat[10] = Z2;   mat[14] = 0;
+   mat[3] =  0;   mat[7] =  0;   mat[11] =  0;   mat[15] = 1;
+
+   //  Save current transforms
+   glPushMatrix();
+   //  Offset, scale and rotate
+   glTranslated(x,y,z);
+   glMultMatrixd(mat);
+   glScaled(s,s,s);
+   //  Nose
+   glColor3f(0,0,1);
+   glBegin(GL_TRIANGLE_FAN);
+   glVertex3d(nose, 0.0, 0.0);
+   for (int th=0;th<=360;th+=30)
+      glVertex3d(cone,wid*Cos(th),wid*Sin(th));
+   glEnd();
+   //  Fuselage
+   glBegin(GL_QUAD_STRIP);
+   for (int th=0;th<=360;th+=30)
+   {
+      glVertex3d(cone,wid*Cos(th),wid*Sin(th));
+      glVertex3d(tail,wid*Cos(th),wid*Sin(th));
+   }
+   glEnd();
+   // Tailpipe
+   glColor3f(1,0.8,0);
+   glBegin(GL_TRIANGLE_FAN);
+   glVertex3d(tail, 0.0, 0.0);
+   for (int th=0;th<=360;th+=30)
+      glVertex3d(tail,wid*Cos(th),wid*Sin(th));
+   glEnd();
+   //  Canopy
+   glPushMatrix();
+   glTranslated(0.15,wid,0);
+   glScaled(0.05,0.03,0.03);
+   glColor3f(1,1,1);
+   for (int ph=-30;ph<90;ph+=30)
+   {
+      glBegin(GL_QUAD_STRIP);
+      for (int th=0;th<=360;th+=30)
+      {
+         Canopy(th,ph);
+         Canopy(th,ph+30);
+      }
+      glEnd();
+   }
+   glPopMatrix();
+   //  Wings
+   glColor3f(1,1,0);
+   glBegin(GL_TRIANGLES);
+   glVertex3d(wing, 0.0, wid);
+   glVertex3d(tail, 0.0, wid);
+   glVertex3d(tail, 0.0, 0.5);
+
+   glVertex3d(wing, 0.0,-wid);
+   glVertex3d(tail, 0.0,-wid);
+   glVertex3d(tail, 0.0,-0.5);
+   glEnd();
+   //  Vertical tail
+   glColor3f(1,0,0);
+   glBegin(GL_TRIANGLES);
+   glVertex3d(strk, wid, 0.0);
+   glVertex3d(tail, 0.3, 0.0);
+   glVertex3d(tail, wid, 0.0);
+   glEnd();
+   //  Undo transformations
+   glPopMatrix();
+}
+
+/*
+ *  Draw icosahedron using glDrawElements
+ *     at (x,y,z)
+ *     size  s
+ *     rotated th about the x axis
+ */
+static void icosahedron1(float x,float y,float z,float s,float th)
+{
+   //  Vertex index list
+   const int N=60;
+   const unsigned char index[] =
+      {
+       2, 1, 0,    3, 2, 0,    4, 3, 0,    5, 4, 0,    1, 5, 0,
+      11, 6, 7,   11, 7, 8,   11, 8, 9,   11, 9,10,   11,10, 6,
+       1, 2, 6,    2, 3, 7,    3, 4, 8,    4, 5, 9,    5, 1,10,
+       2, 7, 6,    3, 8, 7,    4, 9, 8,    5,10, 9,    1, 6,10,
+      };
+   //  Vertex coordinates
+   const float xyz[] =
+      {
+       0.000, 0.000, 1.000,
+       0.894, 0.000, 0.447,
+       0.276, 0.851, 0.447,
+      -0.724, 0.526, 0.447,
+      -0.724,-0.526, 0.447,
+       0.276,-0.851, 0.447,
+       0.724, 0.526,-0.447,
+      -0.276, 0.851,-0.447,
+      -0.894, 0.000,-0.447,
+      -0.276,-0.851,-0.447,
+       0.724,-0.526,-0.447,
+       0.000, 0.000,-1.000
+      };
+   //  Vertex colors
+   const float rgb[] =
+      {
+      0.0,0.0,1.0,
+      0.0,1.0,0.0,
+      0.0,1.0,1.0,
+      1.0,0.0,0.0,
+      1.0,0.0,1.0,
+      1.0,1.0,0.0,
+      0.0,0.0,1.0,
+      0.0,1.0,0.0,
+      0.0,1.0,1.0,
+      1.0,0.0,0.0,
+      1.0,0.0,1.0,
+      1.0,1.0,0.0,
+      };
+   //  Define vertexes
+   glVertexPointer(3,GL_FLOAT,0,xyz);
+   glEnableClientState(GL_VERTEX_ARRAY);
+   //  Define colors for each vertex
+   glColorPointer(3,GL_FLOAT,0,rgb);
+   glEnableClientState(GL_COLOR_ARRAY);
+   //  Draw icosahedron
+   glPushMatrix();
+   glTranslatef(x,y,z);
+   glRotatef(th,1,0,0);
+   glScalef(s,s,s);
+   glDrawElements(GL_TRIANGLES,N,GL_UNSIGNED_BYTE,index);
+   glPopMatrix();
+   //  Disable vertex array
+   glDisableClientState(GL_VERTEX_ARRAY);
+   //  Disable color array
+   glDisableClientState(GL_COLOR_ARRAY);
+}
+
+/*
+ * Icosahedron defined as triangles
+ */
+const int Ni=60;
+//  Vertex coordinates and colors
+const float xyzrgb[] =
+{
+    0.276, 0.851, 0.447,  0.0,0.0,1.0,
+    0.894, 0.000, 0.447,  0.0,0.0,1.0,
+    0.000, 0.000, 1.000,  0.0,0.0,1.0,
+   -0.724, 0.526, 0.447,  0.0,1.0,0.0,
+    0.276, 0.851, 0.447,  0.0,1.0,0.0,
+    0.000, 0.000, 1.000,  0.0,1.0,0.0,
+   -0.724,-0.526, 0.447,  0.0,1.0,1.0,
+   -0.724, 0.526, 0.447,  0.0,1.0,1.0,
+    0.000, 0.000, 1.000,  0.0,1.0,1.0,
+    0.276,-0.851, 0.447,  1.0,0.0,1.0,
+   -0.724,-0.526, 0.447,  1.0,0.0,1.0,
+    0.000, 0.000, 1.000,  1.0,0.0,1.0,
+    0.894, 0.000, 0.447,  1.0,1.0,0.0,
+    0.276,-0.851, 0.447,  1.0,1.0,0.0,
+    0.000, 0.000, 1.000,  1.0,1.0,0.0,
+    0.000, 0.000,-1.000,  0.0,0.0,1.0,
+    0.724, 0.526,-0.447,  0.0,0.0,1.0,
+   -0.276, 0.851,-0.447,  0.0,0.0,1.0,
+    0.000, 0.000,-1.000,  0.0,1.0,0.0,
+   -0.276, 0.851,-0.447,  0.0,1.0,0.0,
+   -0.894, 0.000,-0.447,  0.0,1.0,0.0,
+    0.000, 0.000,-1.000,  0.0,1.0,1.0,
+   -0.894, 0.000,-0.447,  0.0,1.0,1.0,
+   -0.276,-0.851,-0.447,  0.0,1.0,1.0,
+    0.000, 0.000,-1.000,  1.0,0.0,0.0,
+   -0.276,-0.851,-0.447,  1.0,0.0,0.0,
+    0.724,-0.526,-0.447,  1.0,0.0,0.0,
+    0.000, 0.000,-1.000,  1.0,0.0,1.0,
+    0.724,-0.526,-0.447,  1.0,0.0,1.0,
+    0.724, 0.526,-0.447,  1.0,0.0,1.0,
+    0.894, 0.000, 0.447,  1.0,1.0,0.0,
+    0.276, 0.851, 0.447,  1.0,1.0,0.0,
+    0.724, 0.526,-0.447,  1.0,1.0,0.0,
+    0.276, 0.851, 0.447,  0.0,0.0,1.0,
+   -0.724, 0.526, 0.447,  0.0,0.0,1.0,
+   -0.276, 0.851,-0.447,  0.0,0.0,1.0,
+   -0.724, 0.526, 0.447,  0.0,1.0,0.0,
+   -0.724,-0.526, 0.447,  0.0,1.0,0.0,
+   -0.894, 0.000,-0.447,  0.0,1.0,0.0,
+   -0.724,-0.526, 0.447,  0.0,1.0,1.0,
+    0.276,-0.851, 0.447,  0.0,1.0,1.0,
+   -0.276,-0.851,-0.447,  0.0,1.0,1.0,
+    0.276,-0.851, 0.447,  1.0,0.0,0.0,
+    0.894, 0.000, 0.447,  1.0,0.0,0.0,
+    0.724,-0.526,-0.447,  1.0,0.0,0.0,
+    0.276, 0.851, 0.447,  1.0,0.0,1.0,
+   -0.276, 0.851,-0.447,  1.0,0.0,1.0,
+    0.724, 0.526,-0.447,  1.0,0.0,1.0,
+   -0.724, 0.526, 0.447,  1.0,1.0,0.0,
+   -0.894, 0.000,-0.447,  1.0,1.0,0.0,
+   -0.276, 0.851,-0.447,  1.0,1.0,0.0,
+   -0.724,-0.526, 0.447,  0.0,0.0,1.0,
+   -0.276,-0.851,-0.447,  0.0,0.0,1.0,
+   -0.894, 0.000,-0.447,  0.0,0.0,1.0,
+    0.276,-0.851, 0.447,  0.0,1.0,0.0,
+    0.724,-0.526,-0.447,  0.0,1.0,0.0,
+   -0.276,-0.851,-0.447,  0.0,1.0,0.0,
+    0.894, 0.000, 0.447,  0.0,1.0,1.0,
+    0.724, 0.526,-0.447,  0.0,1.0,1.0,
+    0.724,-0.526,-0.447,  0.0,1.0,1.0,
+};
+
+/*
+ *  Draw icosahedron using client side arrays
+ *     at (x,y,z)
+ *     size  s
+ *     rotated th about the x axis
+ */
+static void icosahedron2(float x,float y,float z,float s,float th)
+{
+   //  Define vertexes
+   glVertexPointer(3,GL_FLOAT,6*sizeof(float),xyzrgb);
+   glEnableClientState(GL_VERTEX_ARRAY);
+   //  Define colors for each vertex
+   glColorPointer(3,GL_FLOAT,6*sizeof(float),xyzrgb+3);
+   glEnableClientState(GL_COLOR_ARRAY);
+   //  Draw icosahedron
+   glPushMatrix();
+   glTranslatef(x,y,z);
+   glRotatef(th,1,0,0);
+   glScalef(s,s,s);
+   glDrawArrays(GL_TRIANGLES,0,Ni);
+   glPopMatrix();
+   //  Disable vertex array
+   glDisableClientState(GL_VERTEX_ARRAY);
+   //  Disable color array
+   glDisableClientState(GL_COLOR_ARRAY);
+}
+
+/*
+ *  Draw icosahedron using VBO
+ *     at (x,y,z)
+ *     size  s
+ *     rotated th about the x axis
+ */
+static unsigned int vbo3=0; //  Icosahedron VBO
+static void icosahedron3(float x,float y,float z,float s,float th)
+{
+   //  Bind VBO
+   if (vbo3)
+      glBindBuffer(GL_ARRAY_BUFFER,vbo3);
+   //  Initialize VBO on first call
+   else
+   {
+      //  Get buffer name
+      glGenBuffers(1, &vbo3);
+      //  Bind VBO
+      glBindBuffer(GL_ARRAY_BUFFER, vbo3);
+      //  Copy icosahedron to VBO
+      glBufferData(GL_ARRAY_BUFFER,sizeof(xyzrgb),xyzrgb,GL_STATIC_DRAW);
+   }
+
+   //  Define vertexes
+   glVertexPointer(3,GL_FLOAT,6*sizeof(float),(void*)0);
+   glEnableClientState(GL_VERTEX_ARRAY);
+   //  Define colors for each vertex
+   glColorPointer(3,GL_FLOAT,6*sizeof(float),(void*)12);
+   glEnableClientState(GL_COLOR_ARRAY);
+   //  Draw icosahedron
+   glPushMatrix();
+   glTranslatef(x,y,z);
+   glRotatef(th,1,0,0);
+   glScalef(s,s,s);
+   glDrawArrays(GL_TRIANGLES,0,Ni);
+   glPopMatrix();
+   //  Disable vertex array
+   glDisableClientState(GL_VERTEX_ARRAY);
+   //  Disable color array
+   glDisableClientState(GL_COLOR_ARRAY);
+   //  Release VBO
+   glBindBuffer(GL_ARRAY_BUFFER,0);
+}
+
+/*
+ *  OpenGL (GLUT) calls this routine to display the scene
+ */
+void display()
+{
+   //  Erase the window and the depth buffer
+   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+   //  Enable Z-buffering in OpenGL
+   glEnable(GL_DEPTH_TEST);
+   //  Undo previous transformations
    glLoadIdentity();
-   gluLookAt(distance*Sin(th)*Cos(ph),1+distance*Sin(ph),distance*Cos(th)*Cos(ph),0,1,0,0,1,0);
-   glLightfv(GL_LIGHT0,GL_POSITION,light); glEnable(GL_LIGHTING);
-   field(); human(-4.5+3.95*clamp(timeScene/3.6,0,1),0,1,0,1);
-   human(-3.0,2.2,.78,145,0);
-   ballPosition(&bx,&by,&roll);
-   glPushMatrix(); glTranslated(bx,by,-.23); glRotated(roll,0,0,1); sphere(0,0,0,ballRadius,1); glPopMatrix();
-   glDisable(GL_LIGHTING); glColor3f(1,1,1);
+   //  Set view angle
+   glRotatef(ph,1,0,0);
+   glRotatef(th,0,1,0);
+   //  Decide what to draw
+   switch (mode)
+   {
+      //  Draw cubes
+      case 0:
+         cube(0,0,0 , 0.3,0.3,0.3 , 0);
+         cube(1,0,0 , 0.3,0.2,0.2 , 45);
+         cube(0,1,0 , 0.4,0.4,0.2 , 90);
+         break;
+      //  Draw spheres
+      case 1:
+         sphere1(0,0,0 , 0.4);
+         sphere1(1,0,0 , 0.2);
+         sphere2(0,1,0 , 0.2);
+         break;
+      //  Line airplane
+      case 2:
+         FlatPlane(GL_LINE_LOOP , 0,0,0);
+         break;
+      //  Polygon airplane
+      case 3:
+         FlatPlane(GL_POLYGON , 0,0,0);
+         break;
+      // Solid airplane
+      case 4:
+         SolidPlane(0,0,0 , 1,0,0 , 0,1,0 , 3);
+         break;
+      // Icosahedron1
+      case 5:
+         icosahedron1(0,0,0,1.2,0);
+         break;
+      // Icosahedron2
+      case 6:
+         icosahedron2(0,0,0,1.2,0);
+         break;
+      // Icosahedron3
+      case 7:
+         icosahedron3(0,0,0,1.2,0);
+         break;
+      // Mix of objects
+      case 8:
+         //  Cube
+         cube(-1,0,0 , 0.3,0.3,0.3 , 3*zh);
+         //  Ball
+         sphere1(0,0,0 , 0.3);
+         //  Solid Airplane
+         SolidPlane(1.7*Cos(zh),1.7*Sin(zh), 0 ,-Sin(zh),Cos(zh),0 , -Cos(zh),-Sin(zh),0 , 1);
+         //  Icosahedron
+         icosahedron3(1,0,0,0.5,zh);
+         //  Utah Teapot
+         glPushMatrix();
+         glTranslatef(0,0,-1);
+         glRotatef(zh,0,1,0);
+         glColor3f(Cos(zh)*Cos(zh),0,Sin(zh)*Sin(zh));
+         glutSolidTeapot(0.5);
+         glPopMatrix();
+         break;
+   }
+   //  White
+   glColor3f(1,1,1);
+   //  Draw axes
    if (axes)
    {
+      const double len=1.5;  //  Length of axes
       glBegin(GL_LINES);
-      glVertex3d(0,.03,0); glVertex3d(2,.03,0);
-      glVertex3d(0,.03,0); glVertex3d(0,4,0);
-      glVertex3d(0,.03,0); glVertex3d(0,.03,2); glEnd();
-      glRasterPos3d(2,.03,0); Print("X"); glRasterPos3d(0,4,0); Print("Y"); glRasterPos3d(0,.03,2); Print("Z");
+      glVertex3d(0.0,0.0,0.0);
+      glVertex3d(len,0.0,0.0);
+      glVertex3d(0.0,0.0,0.0);
+      glVertex3d(0.0,len,0.0);
+      glVertex3d(0.0,0.0,0.0);
+      glVertex3d(0.0,0.0,len);
+      glEnd();
+      //  Label axes
+      glRasterPos3d(len,0.0,0.0);
+      Print("X");
+      glRasterPos3d(0.0,len,0.0);
+      Print("Y");
+      glRasterPos3d(0.0,0.0,len);
+      Print("Z");
    }
-   /* Screen-space HUD, independent of camera and depth buffer. */
-   glDisable(GL_DEPTH_TEST); glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(0,width,0,height,-1,1);
-   glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
-   glColor3f(.04,.09,.12); glBegin(GL_QUADS);
-   glVertex2i(0,0); glVertex2i(width,0); glVertex2i(width,76); glVertex2i(0,76); glEnd();
-   glColor3f(.96,.97,.92); glRasterPos2i(18,50);
-   Print("FOOTBALL PRACTICE   |   %s%s",timeScene<3.6?"Approach":timeScene<contact?"Backswing":timeScene<5.33?"Kick!":"Ball in play",paused?"  [paused]":"");
-   glRasterPos2i(18,20); Print("Arrows / drag: orbit   +/-: zoom   Space: pause   R: replay   0: reset view   A: axes   Esc: exit");
-   glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW);
-   ErrCheck("display"); glutSwapBuffers();
+   //  Five pixels from the lower left corner of the window
+   glWindowPos2i(5,5);
+   //  Print the text string
+   Print("Angle=%d,%d    %s",th,ph,text[mode]);
+   //  Render the scene
+   ErrCheck("display");
+   glFlush();
+   glutSwapBuffers();
 }
-void reshape(int w,int h)
-{
-   width=w>0?w:1; height=h>0?h:1; asp=(double)width/height;
-   glViewport(0,0,width,height); glMatrixMode(GL_PROJECTION); glLoadIdentity();
-   gluPerspective(48,asp,.1,100); glMatrixMode(GL_MODELVIEW);
-}
+
+/*
+ *  GLUT calls this routine when an arrow key is pressed
+ */
 void special(int key,int x,int y)
 {
-   (void)x; (void)y;
-   if (key==GLUT_KEY_RIGHT) th+=5;
-   if (key==GLUT_KEY_LEFT) th-=5;
-   if (key==GLUT_KEY_UP) ph+=5;
-   if (key==GLUT_KEY_DOWN) ph-=5;
-   ph=clamp(ph,5,85); th=fmod(th,360); glutPostRedisplay();
+   //  Right arrow key - increase angle by 5 degrees
+   if (key == GLUT_KEY_RIGHT)
+      th += 5;
+   //  Left arrow key - decrease angle by 5 degrees
+   else if (key == GLUT_KEY_LEFT)
+      th -= 5;
+   //  Up arrow key - increase elevation by 5 degrees
+   else if (key == GLUT_KEY_UP)
+      ph += 5;
+   //  Down arrow key - decrease elevation by 5 degrees
+   else if (key == GLUT_KEY_DOWN)
+      ph -= 5;
+   //  Keep angles to +/-360 degrees
+   th %= 360;
+   ph %= 360;
+   //  Tell GLUT it is necessary to redisplay the scene
+   glutPostRedisplay();
 }
+
+/*
+ *  GLUT calls this routine when a key is pressed
+ */
 void key(unsigned char ch,int x,int y)
 {
-   (void)x; (void)y;
-   if (ch==27) exit(0);
-   if (ch=='0') { th=25; ph=22; distance=16; }
-   if (ch=='a' || ch=='A') axes=!axes;
-   if (ch==' ') { paused=!paused; lastTime=glutGet(GLUT_ELAPSED_TIME); }
-   if (ch=='r' || ch=='R') { timeScene=0; lastTime=glutGet(GLUT_ELAPSED_TIME); }
-   if (ch=='+' || ch=='=') distance=clamp(distance-1,7,30);
-   if (ch=='-' || ch=='_') distance=clamp(distance+1,7,30);
+   //  Exit on ESC
+   if (ch == 27)
+      exit(0);
+   //  Reset view angle
+   else if (ch == '0')
+      th = ph = 0;
+   //  Toggle axes
+   else if (ch == 'a' || ch == 'A')
+      axes = 1-axes;
+   //  Switch display mode
+   else if (ch == 'm')
+      mode = (mode+1)%9;
+   else if (ch == 'M')
+      mode = (mode+8)%9;
+   //  Tell GLUT it is necessary to redisplay the scene
    glutPostRedisplay();
 }
-static void mouse(int button,int state,int x,int y)
+
+/*
+ *  GLUT calls this routine when the window is resized
+ */
+void reshape(int width,int height)
 {
-   if (button==GLUT_LEFT_BUTTON) { drag=state==GLUT_DOWN; mx=x; my=y; }
-   if (state==GLUT_DOWN && (button==3 || button==4))
-      distance=clamp(distance+(button==3?-1:1),7,30);
+   //  Set the viewport to the entire window
+   glViewport(0,0, width,height);
+   //  Tell OpenGL we want to manipulate the projection matrix
+   glMatrixMode(GL_PROJECTION);
+   //  Undo previous transformations
+   glLoadIdentity();
+   //  Orthogonal projection
+   const double dim=2.5;
+   double asp = (height>0) ? (double)width/height : 1;
+   glOrtho(-asp*dim,+asp*dim, -dim,+dim, -dim,+dim);
+   //  Switch to manipulating the model matrix
+   glMatrixMode(GL_MODELVIEW);
+   //  Undo previous transformations
+   glLoadIdentity();
+}
+
+/*
+ *  GLUT calls this routine when there is nothing else to do
+ */
+void idle()
+{
+   double t = glutGet(GLUT_ELAPSED_TIME)/1000.0;
+   zh = fmod(90*t,360);
    glutPostRedisplay();
 }
-static void motion(int x,int y)
-{
-   if (drag) { th=fmod(th+(x-mx)*.4,360); ph=clamp(ph+(y-my)*.4,5,85); mx=x; my=y; glutPostRedisplay(); }
-}
-static void tick(int value)
-{
-   int now=glutGet(GLUT_ELAPSED_TIME);
-   (void)value;
-   if (!paused) timeScene=fmod(timeScene+(now-lastTime)/1000.,10);
-   lastTime=now; glutPostRedisplay(); glutTimerFunc(16,tick,0);
-}
+
+/*
+ *  Start up GLUT and tell it what to do
+ */
 int main(int argc,char* argv[])
 {
-   glutInit(&argc,argv); glutInitWindowSize(width,height);
-   glutInitDisplayMode(GLUT_RGB|GLUT_DEPTH|GLUT_DOUBLE); glutCreateWindow("Ex8 - Football Practice");
+   //  Initialize GLUT and process user parameters
+   glutInit(&argc,argv);
+   //  Request double buffered, true color window with Z buffering at 600x600
+   glutInitWindowSize(600,600);
+   glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
+   //  Create the window
+   glutCreateWindow("Objects");
 #ifdef USEGLEW
-   if (glewInit()!=GLEW_OK) { fprintf(stderr,"Error initializing GLEW\n"); return 1; }
+   //  Initialize GLEW
+   if (glewInit()!=GLEW_OK) Fatal("Error initializing GLEW\n");
 #endif
-   glClearColor(.49,.69,.80,1); glEnable(GL_NORMALIZE); glEnable(GL_COLOR_MATERIAL);
-   glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE); glEnable(GL_LIGHT0);
-   { const GLfloat ambient[]={.35,.35,.35,1}; glLightModelfv(GL_LIGHT_MODEL_AMBIENT,ambient); }
-   glutDisplayFunc(display); glutReshapeFunc(reshape); glutSpecialFunc(special); glutKeyboardFunc(key);
-   glutMouseFunc(mouse); glutMotionFunc(motion);
-   lastTime=glutGet(GLUT_ELAPSED_TIME); glutTimerFunc(16,tick,0);
-   glutMainLoop(); return 0;
+   //  Tell GLUT to call "idle" when there is nothing else to do
+   glutIdleFunc(idle);
+   //  Tell GLUT to call "display" when the scene should be drawn
+   glutDisplayFunc(display);
+   //  Tell GLUT to call "reshape" when the window is resized
+   glutReshapeFunc(reshape);
+   //  Tell GLUT to call "special" when an arrow key is pressed
+   glutSpecialFunc(special);
+   //  Tell GLUT to call "key" when a key is pressed
+   glutKeyboardFunc(key);
+   //  Pass control to GLUT so it can interact with the user
+   glutMainLoop();
+   return 0;
 }

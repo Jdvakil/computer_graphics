@@ -49,7 +49,7 @@ and the background is black. Controls are keyboard-only.
 | At least two instances with different position, scale, and orientation | `human()` is reused for all three people; the exact transforms are listed below. |
 | Construct instances by translating, rotating, and scaling a generic object | `human()` applies `glTranslated`, `glRotated`, and `glScaled` to the same local model, enclosed by `glPushMatrix` / `glPopMatrix`. |
 | Generate geometry without canned GLUT/GLU solids or imported models | All vertices are generated directly in `hw3.c`. GLUT provides the window, callbacks, and text; GLU is used only for error messages. |
-| Include an original object beyond example primitives | `sportsBag()` builds a flat-bottomed body from five changing nine-point cross sections, with tapered ends, triangulated sides, and closed end caps. Two arched handles have inner/outer faces, front/back faces, and end caps. It does not use cube, sphere, or cylinder helpers. |
+| Include an original object beyond example primitives | `duffel()` builds a flat-bottomed body from five changing nine-point cross sections, with tapered ends, triangulated sides, and closed end caps. Two arched handles have inner/outer faces, front/back faces, and end caps. It does not use cube, sphere, or cylinder helpers. |
 | Avoid a scene made only from simple primitive assemblies | The original bag mesh provides the additional modeling work; it is not a pyramid or an assembly of cuboids and spheroids. The people intentionally retain their simple style. |
 | Hide surfaces obstructed by other objects | The window requests `GLUT_DEPTH`, every frame clears the depth buffer, and `GL_DEPTH_TEST` is enabled for the scene. Depth testing is disabled only for the screen-space instructions. |
 | Think ahead about future textures | Geometry is owned by the program rather than canned GLUT objects. Texture coordinates can be added to the mesh routines later; this assignment does not require textures, and none are currently used. |
@@ -57,19 +57,32 @@ and the background is black. Controls are keyboard-only.
 | Human instance | Position (x, y, z) | Scale | Y rotation |
 | --- | --- | --- | --- |
 | Blue passer | (-2.7, 0, 0) | 1.0 | 0 degrees |
-| Red passer | (2.7, 0, -0.451) | 1.05 | 180 degrees |
+| Red passer | (2.7, 0, -0.45) | 1.05 | 180 degrees |
 | Viewer | (-2, 0, -2.8) | 0.8 | -90 degrees |
 
 The custom bag addresses the explicit non-primitive requirement. The final
 judgment of whether the modeling is sufficiently challenging belongs to the
 instructor.
 
-Validation: built with the provided makefile and checked with C99, `-Wall`,
-`-Wextra`, and `-Wpedantic`. A virtual OpenGL display was used to exercise a
-full passing cycle, views from above and below at eight azimuths, window
-resizing, pause/resume, restart, zoom, and view reset. A depth buffer was
-confirmed present, and these checks reported no OpenGL errors. The default
-view was also visually inspected.
+## Code structure
+
+The file follows the same layout as ex8 and HW2:
+
+1. View/animation globals, degree-based `Sin`/`Cos`, and `Print`/`ErrCheck` helpers.
+2. Object routines that use `glBegin`, vertex loops, and push/pop transforms.
+   `duffel()` draws the original body and calls `bagHandle()` twice.
+3. `display()` computes the passing pose and draws the scene.
+4. `reshape()`, `special()`, and `key()` handle projection and keyboard input.
+   Zoom and reset are handled directly in `key()`, as in HW2.
+5. `idle()` advances animation time, and `main()` registers the GLUT callbacks.
+
+Validation: built with the supplied makefile and checked with C99, `-Wall`,
+`-Wextra`, and `-Wpedantic`, including the `USEGLEW` compilation path.
+Before/after images at six animation times and four viewpoints (24 frames)
+were pixel-identical after the structural refactor. Keyboard rotation,
+zoom limits, pause/resume, restart, view reset, portrait/zero-sized reshape
+handling, and depth-buffer availability were also checked in a virtual
+OpenGL display without OpenGL errors.
 
 ## Controls
 
