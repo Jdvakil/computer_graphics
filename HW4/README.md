@@ -1,31 +1,59 @@
-# Jay Vakil Homework 3 - Scene in 3D
+# Jay Vakil Homework 4 - Projections and first-person navigation
 
-In this homework, we went over the basics of instantiating objects in 3D in OpenGL and glut. I created a scene of two players/humans passing a soccer ball on a pitch practicing before a game. Their coach is in the background watching them and their kit bag is on the pitch. There are also cones which are left on the pitch for guidance. The humans are  created using a cylinder, cube, and a sphere, along with two cubes for shoes. I also created a duffel bag to represent their kit bag. I made five cross-sections of the bag's outline, lined them up along its length with the end ones slightly smaller to create the taper, and joined them with triangles. For the straps, I placed small rectangles along an arch and joined them with quads, then drew it twice to make the two handles. The animation is timed to match the players kicking so it looks like they are playing pass. 
+This is the exact HW3 passing-practice scene: the same pitch, two animated players,
+coach, four cones, duffel bag, and moving ball, with the original geometry, colors,
+placements, and six-second animation. HW4 adds three camera modes. The default
+view is pulled back to show the whole pitch.
 
+## Build and run
 
-## Instructions
+Requires a C compiler, OpenGL development files, and GLFW 3 development files
+(for example, `libglfw3-dev` and `libgl1-mesa-dev` on Debian/Ubuntu).
 
-```
+```sh
+cd HW4
 make
-./hw3
+./hw4
 ```
 
-Once you `make` in the folder, you should see `hw3 and hw3.o` files. Once it finishes "making", which should be pretty fast, you can run the program with `./hw3` and it should open up an OpenGL window showing the animation and objects. 
+GLFW handles the window, keyboard input, and timing. This implementation uses no
+GLU, GLUT, CSCIx229 library, ready-made object routines, or imported objects.
+All geometry is drawn directly with OpenGL, as in HW3. Controls and the current
+mode appear in the window title; the full control list is also printed at launch.
 
+## Controls
 
-These are the instructions to interact and play around with this program:
-
-
-| Keystroke | Action |
+| Key | Action |
 | --- | --- |
-| Arrow keys (up/down/left/right)| Move the camera in the corresponding direction |
-| `+` / `-` | Zoom in / out |
-| `r` | Reset the animation |
-| `0` | Reset the camera view |
-| `space` | Pause/Play the animation|
+| `m` | Cycle orthogonal → perspective → first person → orthogonal |
+| Left / Right (overhead) | Orbit around the scene |
+| Up / Down (overhead) | Raise / lower the viewing angle |
+| `+` / `-` (overhead) | Zoom in / out (`=` also zooms in) |
+| Up / Down or `W` / `S` (first person) | Walk forward / backward along the current heading |
+| Left / Right (first person) | Turn left / right |
+| `A` / `D` (first person) | Strafe left / right |
+| Page Up / Page Down (first person) | Look up / down |
+| `0` | Reset both cameras and zoom, keeping the selected mode |
+| Space | Pause / resume animation |
+| `r` | Restart the passing animation |
 | Esc | Exit |
 
+Both overhead modes share the same eye position, target, angles, and zoom state.
+Switching projection changes only the projection matrix. Reset restores a slanted
+view of the whole scene, including in portrait windows. Overhead elevation is
+limited to 5–85 degrees and zoom to 2–40 units to keep the camera valid.
 
-A lot of the fundamentals were provided in `ex8.c` and `ex7.c` files provided by the professor. I also borrowed a bunch of code from my previous homework `hw2.c` and set up this new animation and 3D objects. Having the exercises and in-class walkthrough really helped because it taught me the fundamentals needed to complete this homework. 
+First person starts at `(0, 1.7, 8)`, facing the pitch. Movement stays at eye height,
+with X/Z limited to ±20 units. It has a separate heading and look angle, so visiting
+this mode preserves the overhead view. There is no object collision detection.
 
-Overall this assignment took me around 6-7 hours to complete. 
+## Exercise references
+
+- Exercise 9 supplies the projection setup, aspect-ratio handling, orbital camera,
+  and keyboard control pattern. `glFrustum` implements perspective without GLU;
+  inverse translations and rotations implement the camera without `gluLookAt`.
+- Exercise 10 supplies polygon offset: the pitch receives a small depth offset to
+  prevent coplanar object bases from fighting with the ground. Its CSCIx229 helper
+  library is not used.
+
+`hw3.c` is retained as the original reference; the makefile builds only `hw4.c`.
