@@ -451,7 +451,7 @@ void display(void)
          paused ? "Paused" : "Playing");
    glWindowPos2i(10,30);
    if (mode==2)
-      Print("WASD: walk, Arrows: look around, m: switch mode");   
+      Print("WASD: walk, Arrows: look around");   
    else
       Print("Arrows: change view");
    if (paused)
@@ -459,7 +459,7 @@ void display(void)
    else
       Print(", Playing! press Space again to pause");
    glWindowPos2i(10,10);
-   Print("m: mode  Space: pause/play  +/- : zoom  r: restart  0: reset cameras  Esc: quit");
+   Print("m: mode  Space: pause/play  +/- : zoom  m: switch mode  r: restart  0: reset cameras  Esc: quit");
 
    ErrCheck("display");
    glFlush();
