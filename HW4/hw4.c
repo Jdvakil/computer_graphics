@@ -571,23 +571,12 @@ void key(unsigned char ch,int x,int y)
  */
 void reshape(int width,int height)
 {
+   //  Ratio of the width to the height of the window
+   asp = (height>0) ? (double)width/height : 1;
    //  Set the viewport to the entire window
    glViewport(0,0, width,height);
-   //  Tell OpenGL we want to manipulate the projection matrix
-   glMatrixMode(GL_PROJECTION);
-   //  Undo previous transformations
-   glLoadIdentity();
-   //  Orthogonal projection
-   double asp = (height>0) ? (double)width/height : 1;
-   // zooming in does not clip the depth
-   if (asp>1)
-      glOrtho(-asp*dim,+asp*dim, -dim,+dim, -1000,+1000);
-   else
-      glOrtho(-dim,+dim, -dim/asp,+dim/asp, -1000,+1000);
-   //  Switch to manipulating the model matrix
-   glMatrixMode(GL_MODELVIEW);
-   //  Undo previous transformations
-   glLoadIdentity();
+   //  Set projection
+   Project();
 }
 
 /*
