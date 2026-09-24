@@ -451,7 +451,7 @@ void display(void)
          paused ? "Paused" : "Playing");
    glWindowPos2i(10,30);
    if (mode==2)
-      Print("WASD: walk, Arrows: look around, m: switch mode, 0: reset camera, r: restart, Space: Pause/Play ");
+      Print("WASD: walk, Arrows: look around, m: switch mode");   
    else
       Print("Arrows: change view");
    if (paused)
