@@ -486,11 +486,7 @@ void special(int key,int x,int y)
    if (mode==2)
    {
       if (key==GLUT_KEY_RIGHT) yaw+=5;
-      else if (key==GLUT_KEY_LEFT) yaw-=5;
-
-      //else if (key==GLUT_KEY_UP) walk(0.25,0);
-      //else if (key==GLUT_KEY_DOWN) walk(-0.25,0);
-      
+      else if (key==GLUT_KEY_LEFT) yaw-=5;      
       else if (key==GLUT_KEY_UP) look+=5;
       else if (key==GLUT_KEY_DOWN) look-=5;
       yaw%=360;
@@ -504,8 +500,6 @@ void special(int key,int x,int y)
       else if (key==GLUT_KEY_LEFT) th-=5;
       else if (key==GLUT_KEY_UP) ph+=5;
       else if (key==GLUT_KEY_DOWN) ph-=5;
-      else if (key==GLUT_KEY_PAGE_UP) dim+=0.5;
-      else if (key==GLUT_KEY_PAGE_DOWN) dim-=0.5;
       th%=360;
       //  Keep an overhead view without flipping the camera at the poles.
       if (ph<5) ph=5;
