@@ -540,12 +540,22 @@ void key(unsigned char ch,int x,int y)
    //  Zoom in: shrink the orthogonal view or narrow the perspective FOV.
    else if (ch=='+')
    {
-     fov--;
+      if (mode==0)
+      {
+         if (dim>2) dim-=0.5;
+      }
+      else if (fov>15)
+         fov--;
    }
    //  Zoom out: enlarge the orthogonal view or widen the perspective FOV.
    else if (ch=='-')
    {
-     fov++;
+      if (mode==0)
+      {
+         if (dim<40) dim+=0.5;
+      }
+      else if (fov<100)
+         fov++;
    }
    //  HW3's animation controls
    else if (ch==' ')
