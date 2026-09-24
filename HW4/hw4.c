@@ -487,10 +487,12 @@ void special(int key,int x,int y)
    {
       if (key==GLUT_KEY_RIGHT) yaw+=5;
       else if (key==GLUT_KEY_LEFT) yaw-=5;
-      else if (key==GLUT_KEY_UP) walk(0.25,0);
-      else if (key==GLUT_KEY_DOWN) walk(-0.25,0);
-      else if (key==GLUT_KEY_PAGE_UP) look+=5;
-      else if (key==GLUT_KEY_PAGE_DOWN) look-=5;
+
+      //else if (key==GLUT_KEY_UP) walk(0.25,0);
+      //else if (key==GLUT_KEY_DOWN) walk(-0.25,0);
+      
+      else if (key==GLUT_KEY_UP) look+=5;
+      else if (key==GLUT_KEY_DOWN) look-=5;
       yaw%=360;
       if (look>85) look=85;
       if (look< -85) look=-85;
@@ -535,12 +537,12 @@ void key(unsigned char ch,int x,int y)
       yaw=0; look=-8;
    }
    //  ex9's mode switch, extended to three modes
-   else if (ch=='m' || ch=='M')
+   else if (ch=='m')
       mode=(mode+1)%3;
    //  ex9's field-of-view controls, checking fov rather than the key value
    else if (ch=='-' && fov>15)
       fov--;
-   else if ((ch=='+' || ch=='=') && fov<100)
+   else if ((ch=='+') && fov<100)
       fov++;
    //  HW3's animation controls
    else if (ch==' ')
@@ -582,7 +584,7 @@ void reshape(int width,int height)
 /*
  *  GLUT calls this routine when there is nothing else to do
  */
-void idle(void)
+void idle()
 {
    int now=glutGet(GLUT_ELAPSED_TIME);
    double dt=(now-lastTime)/1000.0;
