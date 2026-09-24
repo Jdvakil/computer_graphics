@@ -126,7 +126,7 @@ static void Project()
  */
 static void cube(double x,double y,double z,
                  double dx,double dy,double dz,
-                 double th)
+                 double th,double r,double g,double b)
 {
    //  Save transformation
    glPushMatrix();
@@ -137,44 +137,44 @@ static void cube(double x,double y,double z,
    //  Cube
    glBegin(GL_QUADS);
    //  Front
-   glColor3f(1,0,0);
+   glColor3d(1.0*r,1.0*g,1.0*b);
    glVertex3f(-1,-1, 1);
    glVertex3f(+1,-1, 1);
    glVertex3f(+1,+1, 1);
    glVertex3f(-1,+1, 1);
    //  Back
-   glColor3f(0,0,1);
+   glColor3d(0.75*r,0.75*g,0.75*b);
    glVertex3f(+1,-1,-1);
    glVertex3f(-1,-1,-1);
    glVertex3f(-1,+1,-1);
    glVertex3f(+1,+1,-1);
    //  Right
-   glColor3f(1,1,0);
+   glColor3d(0.85*r,0.85*g,0.85*b);
    glVertex3f(+1,-1,+1);
    glVertex3f(+1,-1,-1);
    glVertex3f(+1,+1,-1);
    glVertex3f(+1,+1,+1);
    //  Left
-   glColor3f(0,1,0);
+   glColor3d(0.65*r,0.65*g,0.65*b);
    glVertex3f(-1,-1,-1);
    glVertex3f(-1,-1,+1);
    glVertex3f(-1,+1,+1);
    glVertex3f(-1,+1,-1);
    //  Top
-   glColor3f(0,1,1);
+   glColor3d(1.1*r,1.1*g,1.1*b);
    glVertex3f(-1,+1,+1);
    glVertex3f(+1,+1,+1);
    glVertex3f(+1,+1,-1);
    glVertex3f(-1,+1,-1);
    //  Bottom
-   glColor3f(1,0,1);
+   glColor3d(0.55*r,0.55*g,0.55*b);
    glVertex3f(-1,-1,-1);
    glVertex3f(+1,-1,-1);
    glVertex3f(+1,-1,+1);
    glVertex3f(-1,-1,+1);
    //  End
    glEnd();
-   //  Undo transofrmations
+   //  Undo transformations
    glPopMatrix();
 }
 
