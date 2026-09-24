@@ -445,15 +445,15 @@ void display(void)
    glDisable(GL_DEPTH_TEST);
    glColor3f(1,1,1);
    glWindowPos2i(10,50);
-   Print("Projection=%s  Angle=%d,%d  Dim=%.1f  FOV=%d  %s",
+   Print("Projection=%s",
          mode==0 ? "Orthogonal" : mode==1 ? "Perspective" : "First person",
          mode==2 ? yaw : th,mode==2 ? look : ph,dim,fov,
          paused ? "Paused" : "Playing");
    glWindowPos2i(10,30);
    if (mode==2)
-      Print("Arrows: walk/turn  W/S: walk  A/D: strafe  PgUp/PgDn: look  +/-: FOV");
+      Print("WASD: walk, Arrows: look around, m: switch mode, 0: reset camera, r: restart, Space: Pause/Play ");
    else
-      Print("Arrows: view  PgUp/PgDn: zoom out/in  +/-: perspective FOV");
+      Print("Arrows: change view");
    glWindowPos2i(10,10);
    Print("m: mode  Space: pause/play  r: restart  0: reset cameras  Esc: quit");
 
