@@ -455,9 +455,9 @@ void display(void)
    else
       Print("Arrows: change view");
    if (paused)
-      Print("Paused! press Space again to continue");
+      Print(" Paused! press Space again to continue");
    else
-      Print("Playing! press Space again to pause");
+      Print(" Playing! press Space again to pause");
    glWindowPos2i(10,10);
    Print("m: mode  Space: pause/play  +/- : zoom  r: restart  0: reset cameras  Esc: quit");
 
