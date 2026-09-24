@@ -1,16 +1,15 @@
 /*
- *  Homework 4 - HW3's passing practice scene with ex9's projections.
+ *  Projections
+ *
+ *  Draw 27 cubes to demonstrate orthogonal & prespective projections
  *
  *  Key bindings:
- *  m          Cycle orthogonal, perspective, and first person
- *  arrows     Change overhead view; walk/turn in first person
- *  +/-        Change perspective field of view (ex9)
- *  PgDn/PgUp  Zoom overhead view in/out; look down/up in first person
- *  W/S        Walk forward/backward in first person
- *  A/D        Strafe left/right in first person
- *  0          Reset cameras
- *  space      Pause/resume animation
- *  r          Restart animation
+ *  m          Toggle between perspective and orthogonal
+ *  +/-        Changes field of view for perspective
+ *  a          Toggle axes
+ *  arrows     Change view angle
+ *  PgDn/PgUp  Zoom in and out
+ *  0          Reset view angle
  *  ESC        Exit
  */
 #include <stdio.h>
@@ -30,10 +29,10 @@
 #include <GL/glut.h>
 #endif
 
-int mode=0;         // Projection mode: 0=orthogonal, 1=perspective, 2=first person
 int th=20;          // Azimuth of overhead view
 int ph=30;          // Elevation of overhead view
 int fov=55;         // Field of view (for perspective)
+int mode=0;         // Projection mode: 0=orthogonal, 1=perspective, 2=first person
 double asp=1;      // Aspect ratio
 double dim=11;     // Size of world; initially fits the entire pitch
 double eyeX=0;     // First-person eye position
@@ -91,15 +90,15 @@ void Fatal(const char* format , ...)
 
 
 /*
- *  Set projection (from ex9)
+ *  Set projection
  */
-static void Project(void)
+static void Project()
 {
    //  Tell OpenGL we want to manipulate the projection matrix
    glMatrixMode(GL_PROJECTION);
    //  Undo previous transformations
    glLoadIdentity();
-   //  Perspective transformation for overhead and first-person modes
+   //  Perspective transformation
    if (mode)
    {
       //  Match HW3's portrait-window framing by keeping the shorter side fixed.
@@ -127,7 +126,7 @@ static void Project(void)
  */
 static void cube(double x,double y,double z,
                  double dx,double dy,double dz,
-                 double th,double r,double g,double b)
+                 double th)
 {
    //  Save transformation
    glPushMatrix();
@@ -138,44 +137,44 @@ static void cube(double x,double y,double z,
    //  Cube
    glBegin(GL_QUADS);
    //  Front
-   glColor3d(1.0*r,1.0*g,1.0*b);
+   glColor3f(1,0,0);
    glVertex3f(-1,-1, 1);
    glVertex3f(+1,-1, 1);
    glVertex3f(+1,+1, 1);
    glVertex3f(-1,+1, 1);
    //  Back
-   glColor3d(0.75*r,0.75*g,0.75*b);
+   glColor3f(0,0,1);
    glVertex3f(+1,-1,-1);
    glVertex3f(-1,-1,-1);
    glVertex3f(-1,+1,-1);
    glVertex3f(+1,+1,-1);
    //  Right
-   glColor3d(0.85*r,0.85*g,0.85*b);
+   glColor3f(1,1,0);
    glVertex3f(+1,-1,+1);
    glVertex3f(+1,-1,-1);
    glVertex3f(+1,+1,-1);
    glVertex3f(+1,+1,+1);
    //  Left
-   glColor3d(0.65*r,0.65*g,0.65*b);
+   glColor3f(0,1,0);
    glVertex3f(-1,-1,-1);
    glVertex3f(-1,-1,+1);
    glVertex3f(-1,+1,+1);
    glVertex3f(-1,+1,-1);
    //  Top
-   glColor3d(1.1*r,1.1*g,1.1*b);
+   glColor3f(0,1,1);
    glVertex3f(-1,+1,+1);
    glVertex3f(+1,+1,+1);
    glVertex3f(+1,+1,-1);
    glVertex3f(-1,+1,-1);
    //  Bottom
-   glColor3d(0.55*r,0.55*g,0.55*b);
+   glColor3f(1,0,1);
    glVertex3f(-1,-1,-1);
    glVertex3f(+1,-1,-1);
    glVertex3f(+1,-1,+1);
    glVertex3f(-1,-1,+1);
    //  End
    glEnd();
-   //  Undo transformations
+   //  Undo transofrmations
    glPopMatrix();
 }
 
