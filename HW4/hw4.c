@@ -455,7 +455,7 @@ void display(void)
    else
       Print("Arrows: change view");
    glWindowPos2i(10,10);
-   Print("m: mode  Space: pause/play  r: restart  0: reset cameras  Esc: quit");
+   Print("m: mode  Space: pause/play  +/- : zoom  r: restart  0: reset cameras  Esc: quit");
 
    ErrCheck("display");
    glFlush();
@@ -534,7 +534,7 @@ void key(unsigned char ch,int x,int y)
    else if (ch=='m')
       mode=(mode+1)%3;
    //  ex9's field-of-view controls, checking fov rather than the key value
-   else if (ch=='-' && fov>15)
+   else if (ch=='-' || ch=='_' && fov>15)
       fov--;
    else if ((ch=='+') && fov<100)
       fov++;
