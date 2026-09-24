@@ -23,20 +23,21 @@ make
 | `m` | Cycle orthogonal → perspective → first person → orthogonal |
 | Left / Right (overhead) | Orbit around the scene |
 | Up / Down (overhead) | Raise / lower the viewing angle |
-| Page Up / Page Down (overhead) | Zoom out / in, as in ex9 |
-| `+` / `-` | Increase / decrease perspective field of view, as in ex9 |
-| Up / Down or `W` / `S` (first person) | Walk forward / backward |
+| `+` / `-` | Zoom in / out in all three modes |
+| `W` / `S` (first person) | Walk forward / backward |
 | Left / Right (first person) | Turn left / right |
 | `A` / `D` (first person) | Strafe left / right |
-| Page Up / Page Down (first person) | Look up / down |
+| Up / Down (first person) | Look up / down |
 | `0` | Reset both cameras and field of view, keeping the current mode |
 | Space | Pause / resume animation |
 | `r` | Restart the passing animation |
 | Esc | Exit |
 
 Controls, the current mode, and animation status appear on screen using HW3's
-`Print()` helper. Increasing FOV widens the perspective view; it does not affect
-orthogonal projection. FOV is limited to 15–100 degrees.
+`Print()` helper. In orthogonal mode, `+` decreases `dim` to zoom in and `-`
+increases it to zoom out. In both perspective modes, `+` narrows the field of
+view to zoom in and `-` widens it to zoom out. FOV is limited to 15–100 degrees.
+WASD moves the first-person camera; arrows only change where it looks.
 
 Both overhead modes share ex9's orbital eye position, looking toward `(0,1.3,0)`.
 Switching between them changes the projection while preserving the camera.

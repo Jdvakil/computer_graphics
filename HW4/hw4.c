@@ -5,7 +5,7 @@
  *
  *  Key bindings:
  *  m          Toggle between perspective and orthogonal
- *  +/-        Changes field of view for perspective
+ *  +/-        Zoom in/out in all three modes
  *  a          Toggle axes
  *  arrows     Change view angle
  *  PgDn/PgUp  Zoom in and out
@@ -537,11 +537,16 @@ void key(unsigned char ch,int x,int y)
    //  ex9's mode switch, extended to three modes
    else if (ch=='m')
       mode=(mode+1)%3;
-   //  ex9's field-of-view controls, checking fov rather than the key value
-   else if (ch=='-'  && fov>15)
-      fov--;
-   else if ((ch=='+') && fov<100)
-      fov++;
+   //  Zoom in: shrink the orthogonal view or narrow the perspective FOV.
+   else if (ch=='+')
+   {
+     fov--;
+   }
+   //  Zoom out: enlarge the orthogonal view or widen the perspective FOV.
+   else if (ch=='-')
+   {
+     fov++;
+   }
    //  HW3's animation controls
    else if (ch==' ')
    {
