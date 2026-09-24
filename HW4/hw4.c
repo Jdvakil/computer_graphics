@@ -1,85 +1,122 @@
 /*
- * Homework 4: HW3's passing practice scene with three camera modes.
- * Based on ex9's projections/camera controls and ex10's polygon offset.
- * No CSCIx229, GLU, GLUT, or imported objects are used.
+ *  Homework 4 - HW3's passing practice scene with ex9's projections.
  *
- * m       Cycle orthogonal / perspective / first person
- * arrows  Orbit overhead; in first person, walk (up/down) and turn (left/right)
- * W/S     Walk forward/backward in first person
- * A/D     Strafe left/right in first person
- * PgUp/Dn Look up/down in first person
- * +/-     Zoom overhead views
- * 0       Reset cameras (keep current mode)
- * space   Pause/resume animation
- * r       Restart animation
- * Esc     Exit
+ *  Key bindings:
+ *  m          Cycle orthogonal, perspective, and first person
+ *  arrows     Change overhead view; walk/turn in first person
+ *  +/-        Change perspective field of view (ex9)
+ *  PgDn/PgUp  Zoom overhead view in/out; look down/up in first person
+ *  W/S        Walk forward/backward in first person
+ *  A/D        Strafe left/right in first person
+ *  0          Reset cameras
+ *  space      Pause/resume animation
+ *  r          Restart animation
+ *  ESC        Exit
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <math.h>
-#ifdef __APPLE__
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#ifdef USEGLEW
+#include <GL/glew.h>
 #endif
-#include <GLFW/glfw3.h>
+//  OpenGL with prototypes for glext
+#define GL_GLEXT_PROTOTYPES
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+// Tell Xcode IDE to not gripe about OpenGL deprecation
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#else
+#include <GL/glut.h>
+#endif
 
+int mode=0;         // Projection mode: 0=orthogonal, 1=perspective, 2=first person
+int th=20;          // Azimuth of overhead view
+int ph=30;          // Elevation of overhead view
+int fov=55;         // Field of view (for perspective)
+double asp=1;      // Aspect ratio
+double dim=11;     // Size of world; initially fits the entire pitch
+double eyeX=0;     // First-person eye position
+double eyeY=1.7;
+double eyeZ=8;
+int yaw=0;         // First-person heading
+int look=-8;       // First-person look elevation
+double t=0;        // Time within HW3's six-second passing loop
+int lastTime=0;    // Previous GLUT elapsed time, in milliseconds
+int paused=0;      // Pause the animation
+
+//  Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.14159265/180))
 #define Sin(x) (sin((x)*3.14159265/180))
 
-enum { ORTHOGONAL, PERSPECTIVE, FIRST_PERSON };
-int mode=ORTHOGONAL;
-int th=20;          // Shared overhead azimuth
-int ph=30;          // Shared overhead elevation
-const double fov=55;
-double asp=1;
-double dim=11;      // Half-size of the shorter side: fits the entire pitch
-const double eyeHeight=1.7;
-double eyeX=0,eyeZ=8;
-int yaw=0,look=-8;  // First-person heading and pitch, in degrees
-double t=0;        // Time within HW3's six-second passing loop
-int paused=0;
-
-/* ex9's projection setup, using glFrustum instead of gluPerspective. */
-static void Project(void)
+/*
+ *  Convenience routine to output raster text
+ *  Use VARARGS to make this more flexible
+ */
+#define LEN 8192  //  Maximum length of text string
+void Print(const char* format , ...)
 {
-   double halfWidth=dim*(asp>1 ? asp : 1);
-   double halfHeight=dim*(asp<1 ? 1/asp : 1);
-   glMatrixMode(GL_PROJECTION);
-   glLoadIdentity();
-   if (mode==ORTHOGONAL)
-      glOrtho(-halfWidth,halfWidth,-halfHeight,halfHeight,0.1,200);
-   else
-   {
-      const double near=0.1;
-      double top=near*tan(fov*3.14159265/360);
-      // Keep the entire scene framed even in a portrait-shaped window.
-      if (asp<1) top/=asp;
-      glFrustum(-top*asp,top*asp,-top,top,near,200);
-   }
-   glMatrixMode(GL_MODELVIEW);
+   char    buf[LEN];
+   char*   ch=buf;
+   va_list args;
+   //  Turn the parameters into a character string
+   va_start(args,format);
+   vsnprintf(buf,LEN,format,args);
+   va_end(args);
+   //  Display the characters one at a time at the current raster position
+   while (*ch)
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*ch++);
 }
 
-/* Both overhead projections use exactly the same eye and target.
- * Inverse camera transforms replace ex9's gluLookAt. The eye is
- * (-distance*Sin(th)*Cos(ph), 1.3+distance*Sin(ph),
- *   distance*Cos(th)*Cos(ph)), looking at (0,1.3,0).
+/*
+ *  Check for OpenGL errors
  */
-static void View(void)
+void ErrCheck(const char* where)
 {
+   int err = glGetError();
+   if (err) fprintf(stderr,"ERROR: %s [%s]\n",gluErrorString(err),where);
+}
+
+/*
+ *  Print message to stderr and exit
+ */
+void Fatal(const char* format , ...)
+{
+   va_list args;
+   va_start(args,format);
+   vfprintf(stderr,format,args);
+   va_end(args);
+   exit(1);
+}
+
+
+/*
+ *  Set projection (from ex9)
+ */
+static void Project(void)
+{
+   //  Tell OpenGL we want to manipulate the projection matrix
+   glMatrixMode(GL_PROJECTION);
+   //  Undo previous transformations
    glLoadIdentity();
-   if (mode==FIRST_PERSON)
+   //  Perspective transformation for overhead and first-person modes
+   if (mode)
    {
-      glRotated(-look,1,0,0);
-      glRotated(yaw,0,1,0);
-      glTranslated(-eyeX,-eyeHeight,-eyeZ);
+      //  Match HW3's portrait-window framing by keeping the shorter side fixed.
+      double viewFov=fov;
+      if (asp<1) viewFov=360/3.14159265*atan(tan(fov*3.14159265/360)/asp);
+      //  A small near plane lets us walk close to the objects.
+      gluPerspective(viewFov,asp,0.1,200);
    }
+   //  Orthogonal projection, with HW3's aspect-ratio handling
+   else if (asp>1)
+      glOrtho(-asp*dim,+asp*dim, -dim,+dim, 0.1,200);
    else
-   {
-      double distance=dim/tan(fov*3.14159265/360);
-      glTranslated(0,0,-distance);
-      glRotated(ph,1,0,0);
-      glRotated(th,0,1,0);
-      glTranslated(0,-1.3,0);
-   }
+      glOrtho(-dim,+dim, -dim/asp,+dim/asp, 0.1,200);
+   //  Switch to manipulating the model matrix
+   glMatrixMode(GL_MODELVIEW);
+   //  Undo previous transformations
+   glLoadIdentity();
 }
 
 /*
@@ -350,8 +387,10 @@ static void duffel(double x,double z,double size,double angle)
    glPopMatrix();
 }
 
-/* HW3's animation and scene, with only the camera setup changed. */
-static void display(void)
+/*
+ *  OpenGL (GLUT) calls this routine to display the scene
+ */
+void display(void)
 {
    double right=0,otherRight=0;
    double ballX;
@@ -379,7 +418,24 @@ static void display(void)
 
    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
    glEnable(GL_DEPTH_TEST);
-   View();
+   glLoadIdentity();
+   if (mode==2)
+   {
+      //  Look one unit along the first-person heading and elevation.
+      double dx=Sin(yaw)*Cos(look);
+      double dy=Sin(look);
+      double dz=-Cos(yaw)*Cos(look);
+      gluLookAt(eyeX,eyeY,eyeZ, eyeX+dx,eyeY+dy,eyeZ+dz, 0,1,0);
+   }
+   else
+   {
+      //  ex9's orbital eye position, centered at HW3's scene height.
+      //  Both overhead projections use the same eye and target.
+      double Ex=-2*dim*Sin(th)*Cos(ph);
+      double Ey=1.3+2*dim*Sin(ph);
+      double Ez=+2*dim*Cos(th)*Cos(ph);
+      gluLookAt(Ex,Ey,Ez, 0,1.3,0, 0,Cos(ph),0);
+   }
 
    pitch();
    cone(-3.5,-1.4);
@@ -393,159 +449,185 @@ static void display(void)
    duffel(-0.7,-2.7,0.9,20);
    sphere(ballX,0.3,-0.22,0.3,1);
 
-   GLenum err=glGetError();
-   if (err!=GL_NO_ERROR)
-      fprintf(stderr,"OpenGL error 0x%04x [display]\n",(unsigned int)err);
+   glDisable(GL_DEPTH_TEST);
+   glColor3f(1,1,1);
+   glWindowPos2i(10,50);
+   Print("Projection=%s  Angle=%d,%d  Dim=%.1f  FOV=%d  %s",
+         mode==0 ? "Orthogonal" : mode==1 ? "Perspective" : "First person",
+         mode==2 ? yaw : th,mode==2 ? look : ph,dim,fov,
+         paused ? "Paused" : "Playing");
+   glWindowPos2i(10,30);
+   if (mode==2)
+      Print("Arrows: walk/turn  W/S: walk  A/D: strafe  PgUp/PgDn: look  +/-: FOV");
+   else
+      Print("Arrows: view  PgUp/PgDn: zoom out/in  +/-: perspective FOV");
+   glWindowPos2i(10,10);
+   Print("m: mode  Space: pause/play  r: restart  0: reset cameras  Esc: quit");
+
+   ErrCheck("display");
+   glFlush();
+   glutSwapBuffers();
 }
 
-/* GLFW uses the framebuffer size so resizing also works on HiDPI screens. */
-static void reshape(GLFWwindow* window,int width,int height)
+/*
+ *  Move on the ground relative to the first-person heading
+ */
+static void walk(double forward,double sideways)
 {
-   (void)window;
-   if (width<1) width=1;
-   if (height<1) height=1;
-   asp=(double)width/height;
-   glViewport(0,0,width,height);
-   Project();
+   eyeX+=forward*Sin(yaw)+sideways*Cos(yaw);
+   eyeZ-=forward*Cos(yaw)-sideways*Sin(yaw);
+   //  Keep navigation near the pitch and inside the viewing depth range.
+   if (eyeX>20) eyeX=20;
+   if (eyeX< -20) eyeX=-20;
+   if (eyeZ>20) eyeZ=20;
+   if (eyeZ< -20) eyeZ=-20;
 }
 
-static void title(GLFWwindow* window)
+/*
+ *  GLUT calls this routine when an arrow key is pressed (from ex9)
+ */
+void special(int key,int x,int y)
 {
-   const char* names[]={"Orthogonal", "Perspective", "First person"};
-   char text[512];
-   snprintf(text,sizeof(text),
-      "Jay Vakil - HW4 | %s | m: mode | %s | 0: camera | Space: %s | r: restart | Esc: quit",
-      names[mode],mode==FIRST_PERSON ? "Arrows: walk/turn, A/D: strafe, PgUp/Dn: look" :
-      "Arrows: orbit, +/-: zoom",paused ? "play" : "pause");
-   glfwSetWindowTitle(window,text);
-}
-
-static void resetView(void)
-{
-   th=20;
-   ph=30;
-   dim=11;
-   eyeX=0;
-   eyeZ=8;
-   yaw=0;
-   look=-8;
-}
-
-static void key(GLFWwindow* window,int code,int scancode,int action,int mods)
-{
-   (void)scancode;
-   (void)mods;
-   if (action!=GLFW_PRESS && action!=GLFW_REPEAT) return;
-
-   // Toggles fire once per press, not on keyboard auto-repeat.
-   if (action==GLFW_PRESS)
+   (void)x;
+   (void)y;
+   if (mode==2)
    {
-      if (code==GLFW_KEY_ESCAPE) glfwSetWindowShouldClose(window,GLFW_TRUE);
-      else if (code==GLFW_KEY_M) mode=(mode+1)%3;
-      else if (code==GLFW_KEY_0) resetView();
-      else if (code==GLFW_KEY_SPACE) paused=1-paused;
-      else if (code==GLFW_KEY_R) t=0;
-   }
-
-   if (mode==FIRST_PERSON)
-   {
-      const double step=0.25;
-      if (code==GLFW_KEY_LEFT) yaw-=5;
-      else if (code==GLFW_KEY_RIGHT) yaw+=5;
-      else if (code==GLFW_KEY_W)
-      {
-         eyeX+=step*Sin(yaw);
-         eyeZ-=step*Cos(yaw);
-      }
-      else if (code==GLFW_KEY_S)
-      {
-         eyeX-=step*Sin(yaw);
-         eyeZ+=step*Cos(yaw);
-      }
-      else if (code==GLFW_KEY_A)
-      {
-         eyeX-=step*Cos(yaw);
-         eyeZ-=step*Sin(yaw);
-      }
-      else if (code==GLFW_KEY_D)
-      {
-         eyeX+=step*Cos(yaw);
-         eyeZ+=step*Sin(yaw);
-      }
-      else if (code==GLFW_KEY_UP) look+=5;
-      else if (code==GLFW_KEY_DOWN) look-=5;
+      if (key==GLUT_KEY_RIGHT) yaw+=5;
+      else if (key==GLUT_KEY_LEFT) yaw-=5;
+      else if (key==GLUT_KEY_UP) walk(0.25,0);
+      else if (key==GLUT_KEY_DOWN) walk(-0.25,0);
+      else if (key==GLUT_KEY_PAGE_UP) look+=5;
+      else if (key==GLUT_KEY_PAGE_DOWN) look-=5;
       yaw%=360;
       if (look>85) look=85;
       if (look< -85) look=-85;
-      // Keep walking near the pitch, within the projection's depth range.
-      if (eyeX>20) eyeX=20;
-      if (eyeX< -20) eyeX=-20;
-      if (eyeZ>20) eyeZ=20;
-      if (eyeZ< -20) eyeZ=-20;
    }
    else
    {
-      if (code==GLFW_KEY_RIGHT) th+=5;
-      else if (code==GLFW_KEY_LEFT) th-=5;
-      else if (code==GLFW_KEY_UP) ph+=5;
-      else if (code==GLFW_KEY_DOWN) ph-=5;
-      else if (code==GLFW_KEY_EQUAL || code==GLFW_KEY_KP_ADD) dim-=0.5;
-      else if (code==GLFW_KEY_MINUS || code==GLFW_KEY_KP_SUBTRACT) dim+=0.5;
+      //  ex9's overhead angle and zoom controls
+      if (key==GLUT_KEY_RIGHT) th+=5;
+      else if (key==GLUT_KEY_LEFT) th-=5;
+      else if (key==GLUT_KEY_UP) ph+=5;
+      else if (key==GLUT_KEY_DOWN) ph-=5;
+      else if (key==GLUT_KEY_PAGE_UP) dim+=0.5;
+      else if (key==GLUT_KEY_PAGE_DOWN) dim-=0.5;
       th%=360;
-      // Retain a slanted overhead view; avoid flipping over the poles.
+      //  Keep an overhead view without flipping the camera at the poles.
       if (ph<5) ph=5;
       if (ph>85) ph=85;
       if (dim<2) dim=2;
       if (dim>40) dim=40;
    }
+   //  Update projection
    Project();
-   title(window);
+   //  Tell GLUT it is necessary to redisplay the scene
+   glutPostRedisplay();
 }
 
-static void error(int code,const char* description)
+/*
+ *  GLUT calls this routine when a key is pressed (HW3 and ex9)
+ */
+void key(unsigned char ch,int x,int y)
 {
-   fprintf(stderr,"GLFW error %d: %s\n",code,description);
+   (void)x;
+   (void)y;
+   //  Exit on ESC
+   if (ch==27)
+      exit(0);
+   //  Reset both cameras, keeping the current mode
+   else if (ch=='0')
+   {
+      th=20; ph=30; dim=11; fov=55;
+      eyeX=0; eyeY=1.7; eyeZ=8;
+      yaw=0; look=-8;
+   }
+   //  ex9's mode switch, extended to three modes
+   else if (ch=='m' || ch=='M')
+      mode=(mode+1)%3;
+   //  ex9's field-of-view controls, checking fov rather than the key value
+   else if (ch=='-' && fov>15)
+      fov--;
+   else if ((ch=='+' || ch=='=') && fov<100)
+      fov++;
+   //  HW3's animation controls
+   else if (ch==' ')
+   {
+      paused=1-paused;
+      lastTime=glutGet(GLUT_ELAPSED_TIME);
+   }
+   else if (ch=='r' || ch=='R')
+   {
+      t=0;
+      lastTime=glutGet(GLUT_ELAPSED_TIME);
+   }
+   else if (mode==2)
+   {
+      if (ch=='w' || ch=='W') walk(0.25,0);
+      else if (ch=='s' || ch=='S') walk(-0.25,0);
+      else if (ch=='a' || ch=='A') walk(0,-0.25);
+      else if (ch=='d' || ch=='D') walk(0,0.25);
+   }
+   //  Reproject
+   Project();
+   //  Tell GLUT it is necessary to redisplay the scene
+   glutPostRedisplay();
 }
 
-int main(void)
+/*
+ *  GLUT calls this routine when the window is resized (from ex9)
+ */
+void reshape(int width,int height)
 {
-   GLFWwindow* window;
-   int width,height;
-   glfwSetErrorCallback(error);
-   if (!glfwInit()) return EXIT_FAILURE;
-   // HW3 uses immediate mode, so request a legacy OpenGL context.
-   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,2);
-   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,1);
-   glfwWindowHint(GLFW_DEPTH_BITS,24);
-   window=glfwCreateWindow(1000,600,"Jay Vakil - HW4",NULL,NULL);
-   if (!window)
-   {
-      glfwTerminate();
-      return EXIT_FAILURE;
-   }
-   glfwMakeContextCurrent(window);
-   glfwSwapInterval(1);
-   glfwSetFramebufferSizeCallback(window,reshape);
-   glfwSetKeyCallback(window,key);
-   glfwGetFramebufferSize(window,&width,&height);
-   reshape(window,width,height);
-   title(window);
-   puts("m: cycle orthogonal / perspective / first person");
-   puts("Overhead: arrows orbit, +/- zoom. First person: arrows walk/turn,");
-   puts("W/S walk, A/D strafe, PageUp/PageDown look up/down.");
-   puts("0: reset cameras; Space: pause/play; r: restart animation; Esc: exit.");
+   if (width<1) width=1;
+   if (height<1) height=1;
+   //  Ratio of the width to the height of the window
+   asp=(double)width/height;
+   //  Set the viewport to the entire window
+   glViewport(0,0,width,height);
+   //  Set projection
+   Project();
+}
 
-   double lastTime=glfwGetTime();
-   while (!glfwWindowShouldClose(window))
-   {
-      double now=glfwGetTime();
-      if (!paused) t=fmod(t+now-lastTime,6);
-      lastTime=now;
-      display();
-      glfwSwapBuffers(window);
-      glfwPollEvents();
-   }
-   glfwDestroyWindow(window);
-   glfwTerminate();
-   return EXIT_SUCCESS;
+/*
+ *  GLUT calls this routine when there is nothing else to do
+ */
+void idle(void)
+{
+   int now=glutGet(GLUT_ELAPSED_TIME);
+   double dt=(now-lastTime)/1000.0;
+   lastTime=now;
+   if (!paused) t=fmod(t+dt,6);
+   glutPostRedisplay();
+}
+
+/*
+ *  Start up GLUT and tell it what to do
+ */
+int main(int argc,char* argv[])
+{
+ //  Initialize GLUT and process user parameters
+   glutInit(&argc,argv);
+   //  Request double buffered, true color window with Z buffering
+   glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
+   //  Request 1000 x 600 pixel window
+   glutInitWindowSize(1000,600);
+   //  Create the window
+   glutCreateWindow("Jay Vakil - HW4");
+#ifdef USEGLEW
+   //  Initialize GLEW
+   if (glewInit()!=GLEW_OK) Fatal("Error initializing GLEW\n");
+#endif
+   //  Tell GLUT to call "display" when the scene should be drawn
+   glutDisplayFunc(display);
+   //  Tell GLUT to call "reshape" when the window is resized
+   glutReshapeFunc(reshape);
+   //  Tell GLUT to call "special" when an arrow key is pressed
+   glutSpecialFunc(special);
+   //  Tell GLUT to call "key" when a key is pressed
+   glutKeyboardFunc(key);
+   //  Tell GLUT to call "idle" when the program is idle
+   glutIdleFunc(idle);
+   lastTime=glutGet(GLUT_ELAPSED_TIME);
+   glutMainLoop();
+   return 0;
 }

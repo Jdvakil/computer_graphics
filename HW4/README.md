@@ -1,25 +1,20 @@
 # Jay Vakil Homework 4 - Projections and first-person navigation
 
-This is the exact HW3 passing-practice scene: the same pitch, two animated players,
-coach, four cones, duffel bag, and moving ball, with the original geometry, colors,
-placements, and six-second animation. HW4 adds three camera modes. The default
-view is pulled back to show the whole pitch.
+HW4 keeps HW3's pitch, two animated players, coach, four cones, duffel bag,
+and moving ball. Their geometry, colors, placements, and six-second passing
+animation are unchanged. The initial camera is pulled back to show the whole pitch.
 
 ## Build and run
 
-Requires a C compiler, OpenGL development files, and GLFW 3 development files
-(for example, `libglfw3-dev` and `libgl1-mesa-dev` on Debian/Ubuntu).
+Use the same OpenGL, GLU, and GLUT development libraries as HW3 and exercise 9
+(on Debian/Ubuntu: `freeglut3-dev`, `libglu1-mesa-dev`, and `libgl1-mesa-dev`).
+GLFW is no longer required.
 
 ```sh
 cd HW4
 make
 ./hw4
 ```
-
-GLFW handles the window, keyboard input, and timing. This implementation uses no
-GLU, GLUT, CSCIx229 library, ready-made object routines, or imported objects.
-All geometry is drawn directly with OpenGL, as in HW3. Controls and the current
-mode appear in the window title; the full control list is also printed at launch.
 
 ## Controls
 
@@ -28,32 +23,42 @@ mode appear in the window title; the full control list is also printed at launch
 | `m` | Cycle orthogonal → perspective → first person → orthogonal |
 | Left / Right (overhead) | Orbit around the scene |
 | Up / Down (overhead) | Raise / lower the viewing angle |
-| `+` / `-` (overhead) | Zoom in / out (`=` also zooms in) |
-| Up / Down or `W` / `S` (first person) | Walk forward / backward along the current heading |
+| Page Up / Page Down (overhead) | Zoom out / in, as in ex9 |
+| `+` / `-` | Increase / decrease perspective field of view, as in ex9 |
+| Up / Down or `W` / `S` (first person) | Walk forward / backward |
 | Left / Right (first person) | Turn left / right |
 | `A` / `D` (first person) | Strafe left / right |
 | Page Up / Page Down (first person) | Look up / down |
-| `0` | Reset both cameras and zoom, keeping the selected mode |
+| `0` | Reset both cameras and field of view, keeping the current mode |
 | Space | Pause / resume animation |
 | `r` | Restart the passing animation |
 | Esc | Exit |
 
-Both overhead modes share the same eye position, target, angles, and zoom state.
-Switching projection changes only the projection matrix. Reset restores a slanted
-view of the whole scene, including in portrait windows. Overhead elevation is
-limited to 5–85 degrees and zoom to 2–40 units to keep the camera valid.
+Controls, the current mode, and animation status appear on screen using HW3's
+`Print()` helper. Increasing FOV widens the perspective view; it does not affect
+orthogonal projection. FOV is limited to 15–100 degrees.
 
-First person starts at `(0, 1.7, 8)`, facing the pitch. Movement stays at eye height,
-with X/Z limited to ±20 units. It has a separate heading and look angle, so visiting
-this mode preserves the overhead view. There is no object collision detection.
+Both overhead modes share ex9's orbital eye position, looking toward `(0,1.3,0)`.
+Switching between them changes the projection while preserving the camera.
+Elevation is limited to 5–85 degrees and zoom to 2–40 units. Reset restores a
+slanted view of the whole scene; portrait windows retain the same horizontal framing.
 
-## Exercise references
+First person starts at `(0,1.7,8)`, facing the pitch. Walking follows the current
+heading at a fixed height, with X/Z limited to ±20 units. Its heading and look
+angle are separate from the overhead camera. There is no object collision detection.
 
-- Exercise 9 supplies the projection setup, aspect-ratio handling, orbital camera,
-  and keyboard control pattern. `glFrustum` implements perspective without GLU;
-  inverse translations and rotations implement the camera without `gluLookAt`.
-- Exercise 10 supplies polygon offset: the pitch receives a small depth offset to
-  prevent coplanar object bases from fighting with the ground. Its CSCIx229 helper
-  library is not used.
+## Source structure and exercise references
 
-`hw3.c` is retained as the original reference; the makefile builds only `hw4.c`.
+- HW3 supplies the object routines, scene instances, passing animation, `Print()`,
+  `ErrCheck()`, `Fatal()`, `idle()`, and GLUT window/callback setup in `main()`.
+- Exercise 9 supplies the `Project()` structure (`gluPerspective` / `glOrtho`),
+  the orbital `Ex`, `Ey`, `Ez` calculation and `gluLookAt` in `display()`, and the
+  `special()`, `key()`, and `reshape()` callback patterns. The mode switch is
+  extended to three modes, with a separate first-person eye and heading.
+- Exercise 10 supplies the small polygon depth offset applied to the pitch to
+  avoid coplanar ground/object-base artifacts.
+
+GLUT is used for the window, input, timing, and text; GLU is used for camera and
+projection utilities. All objects are manually constructed with OpenGL vertices.
+No GLU/GLUT object generators, imported objects, or CSCIx229 library are used.
+`hw3.c` remains the original reference; the makefile builds `hw4.c`.
