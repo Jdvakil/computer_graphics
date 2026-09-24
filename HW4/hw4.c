@@ -270,9 +270,6 @@ static void human(double x,double z,double size,double angle,
 
 static void pitch(void)
 {
-   // ex10: push the ground slightly back in depth without moving its vertices.
-   glEnable(GL_POLYGON_OFFSET_FILL);
-   glPolygonOffset(1,1);
    glColor3f(0.12,0.36,0.20);
    glBegin(GL_QUADS);
    glVertex3d(-7,0,-6);
@@ -280,9 +277,9 @@ static void pitch(void)
    glVertex3d(7,0,6);
    glVertex3d(7,0,-6);
    glEnd();
-   glDisable(GL_POLYGON_OFFSET_FILL);
 
 }
+
 
 static void cone(double x,double z)
 {
@@ -420,7 +417,6 @@ void display(void)
    glLoadIdentity();
    if (mode==2)
    {
-      //  Look one unit along the first-person heading and elevation.
       double dx=Sin(yaw)*Cos(look);
       double dy=Sin(look);
       double dz=-Cos(yaw)*Cos(look);
@@ -428,8 +424,6 @@ void display(void)
    }
    else
    {
-      //  ex9's orbital eye position, centered at HW3's scene height.
-      //  Both overhead projections use the same eye and target.
       double Ex=-2*dim*Sin(th)*Cos(ph);
       double Ey=1.3+2*dim*Sin(ph);
       double Ez=+2*dim*Cos(th)*Cos(ph);
