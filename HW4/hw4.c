@@ -534,7 +534,7 @@ void key(unsigned char ch,int x,int y)
    else if (ch=='m')
       mode=(mode+1)%3;
    //  ex9's field-of-view controls, checking fov rather than the key value
-   else if (ch=='-' || ch=='_' && fov>15)
+   else if (ch=='-'  && fov>15)
       fov--;
    else if ((ch=='+') && fov<100)
       fov++;
