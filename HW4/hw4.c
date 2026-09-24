@@ -1,15 +1,14 @@
 /*
- *  Projections
+ *  HW4 Jay Vakil
  *
- *  Draw 27 cubes to demonstrate orthogonal & prespective projections
- *
+ *  
  *  Key bindings:
  *  m          Toggle between perspective and orthogonal
  *  +/-        Zoom in/out in all three modes
- *  a          Toggle axes
  *  arrows     Change view angle
- *  PgDn/PgUp  Zoom in and out
+ *  WASD       Walk in first-person mode
  *  0          Reset view angle
+ * r           Restart the animation
  *  ESC        Exit
  */
 #include <stdio.h>
