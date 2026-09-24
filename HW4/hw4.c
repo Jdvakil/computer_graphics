@@ -567,18 +567,27 @@ void key(unsigned char ch,int x,int y)
 }
 
 /*
- *  GLUT calls this routine when the window is resized (from ex9)
+ *  GLUT calls this routine when the window is resized
  */
 void reshape(int width,int height)
 {
-   if (width<1) width=1;
-   if (height<1) height=1;
-   //  Ratio of the width to the height of the window
-   asp=(double)width/height;
    //  Set the viewport to the entire window
-   glViewport(0,0,width,height);
-   //  Set projection
-   Project();
+   glViewport(0,0, width,height);
+   //  Tell OpenGL we want to manipulate the projection matrix
+   glMatrixMode(GL_PROJECTION);
+   //  Undo previous transformations
+   glLoadIdentity();
+   //  Orthogonal projection
+   double asp = (height>0) ? (double)width/height : 1;
+   // zooming in does not clip the depth
+   if (asp>1)
+      glOrtho(-asp*dim,+asp*dim, -dim,+dim, -1000,+1000);
+   else
+      glOrtho(-dim,+dim, -dim/asp,+dim/asp, -1000,+1000);
+   //  Switch to manipulating the model matrix
+   glMatrixMode(GL_MODELVIEW);
+   //  Undo previous transformations
+   glLoadIdentity();
 }
 
 /*
