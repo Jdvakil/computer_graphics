@@ -543,6 +543,10 @@ void key(unsigned char ch,int x,int y)
    {
       paused=1-paused;
       lastTime=glutGet(GLUT_ELAPSED_TIME);
+      if (paused)
+         Print("Paused! press Space again to continue");
+      else
+         Print("Playing! press Space again to pause");
    }
    else if (ch=='r' || ch=='R')
    {
