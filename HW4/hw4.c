@@ -454,6 +454,10 @@ void display(void)
       Print("WASD: walk, Arrows: look around, m: switch mode, 0: reset camera, r: restart, Space: Pause/Play ");
    else
       Print("Arrows: change view");
+   if (paused)
+      Print("Paused! press Space again to continue");
+   else
+      Print("Playing! press Space again to pause");
    glWindowPos2i(10,10);
    Print("m: mode  Space: pause/play  +/- : zoom  r: restart  0: reset cameras  Esc: quit");
 
@@ -543,10 +547,6 @@ void key(unsigned char ch,int x,int y)
    {
       paused=1-paused;
       lastTime=glutGet(GLUT_ELAPSED_TIME);
-      if (paused)
-         Print("Paused! press Space again to continue");
-      else
-         Print("Playing! press Space again to pause");
    }
    else if (ch=='r' || ch=='R')
    {
