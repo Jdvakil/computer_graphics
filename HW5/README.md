@@ -35,7 +35,8 @@ make
 
 | Key | Action |
 | --- | --- |
-| `l` | Turn lighting on / off |
+| `l` | Turn all scene lighting on / off |
+| `u` | Toggle the visible sun and its sunlight |
 | `p` | Stop / resume the automatic light orbit |
 | `<` / `>` | Move the light by 5 degrees; also stop automatic orbit |
 | `[` / `]` | Lower / raise the light, from 0.5 to 10 units |
@@ -47,6 +48,15 @@ make
 | F2 | Toggle the local-viewer specular lighting model |
 | F3 | Toggle light orbit radius between 6 and 3 units |
 | `o` / `O` | Next / previous inspection view |
+
+A golden sun above the far side of the pitch adds warm directional sunlight
+through `GL_LIGHT1`. It uses the same light-setup pattern as ex13, with the
+position's fourth component set to zero so the incoming rays are parallel.
+The visible sun is drawn with the existing handmade sphere. It stays fixed while
+the original point light moves. `u` toggles the sun and its contribution; `l`
+disables all lighting while leaving the enabled sun visible. Sunlight also applies
+to isolated inspection objects; use `u` to compare them with only the moving light.
+The sun marker itself is drawn only in the complete scene.
 
 The white marker shows the point light's position. The light starts 4 units above
 the pitch and orbits at 45 degrees per second. Space stops only the players/ball;

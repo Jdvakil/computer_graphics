@@ -10,6 +10,7 @@
  *  0          Reset view angle
  *  r          Restart the animation
  *  l          Toggle lighting (ex13)
+ *  u          Toggle the sun and sunlight
  *  p          Pause/resume the light orbit (ex13 move toggle, remapped from m)
  *  < / >      Move light around the scene and stop its automatic orbit
  *  [ / ]      Lower/raise light
@@ -55,6 +56,8 @@ int paused=0;      // Pause the animation
 
 //  Light values from ex13 (intensities are percentages).
 int light=1;       // Lighting on/off
+int sunlight=1;    // Sun and directional sunlight on/off
+const float sunPosition[]={-6,6,-8,0}; // w=0: parallel rays from the sun
 int move=1;        // Move the light independently of the passing animation
 int distance=6;    // Light orbit radius
 int smooth=1;      // Smooth/flat shading
@@ -508,6 +511,13 @@ void display(void)
    //  Lighting setup from ex13, after the camera so the light stays in the world.
    glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
    glDisable(GL_LIGHTING);
+   glDisable(GL_LIGHT1);
+   //  Like ex13's light marker, the sun uses our handmade sphere without lighting.
+   if (sunlight && obj==0)
+   {
+      glColor3f(1.0,0.85,0.2);
+      sphere(sunPosition[0],sunPosition[1],sunPosition[2],0.7,0);
+   }
    if (light)
    {
       float Ambient[]  = {0.01*ambient,0.01*ambient,0.01*ambient,1};
@@ -529,6 +539,19 @@ void display(void)
       glLightfv(GL_LIGHT0,GL_DIFFUSE,Diffuse);
       glLightfv(GL_LIGHT0,GL_SPECULAR,Specular);
       glLightfv(GL_LIGHT0,GL_POSITION,Position);
+      //  Reuse ex13's light setup for a second, warm directional source.
+      //  A position with w=0 models sunlight arriving along parallel rays.
+      if (sunlight)
+      {
+         float SunAmbient[] ={0.08,0.07,0.05,1};
+         float SunDiffuse[] ={0.45,0.40,0.30,1};
+         float SunSpecular[]={0.20,0.18,0.12,1};
+         glEnable(GL_LIGHT1);
+         glLightfv(GL_LIGHT1,GL_AMBIENT,SunAmbient);
+         glLightfv(GL_LIGHT1,GL_DIFFUSE,SunDiffuse);
+         glLightfv(GL_LIGHT1,GL_SPECULAR,SunSpecular);
+         glLightfv(GL_LIGHT1,GL_POSITION,sunPosition);
+      }
       //  ex13's white specular material, with no object emission.
       float white[]={1,1,1,1};
       float black[]={0,0,0,1};
@@ -572,6 +595,8 @@ void display(void)
    glDisable(GL_COLOR_MATERIAL);
    glDisable(GL_DEPTH_TEST);
    glColor3f(1,1,1);
+   glWindowPos2i(10,130);
+   Print("u: sun/sunlight %s",sunlight ? (light ? "On" : "Visible (lighting off)") : "Off");
    glWindowPos2i(10,110);
    Print("Light=%s  Orbit=%s  Azimuth=%.0f Height=%.1f  Object=%s",
          light ? "On" : "Off",move ? "Moving" : "Stopped",zh,ylight,
@@ -700,6 +725,7 @@ void key(unsigned char ch,int x,int y)
    }
    //  ex13's lighting controls, remapped where necessary to preserve HW4 keys.
    else if (ch=='l' || ch=='L') light=1-light;
+   else if (ch=='u' || ch=='U') sunlight=1-sunlight;
    else if (ch=='p' || ch=='P') move=1-move;
    else if (ch=='<' || ch=='>')
    {
