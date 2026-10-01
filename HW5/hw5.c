@@ -53,22 +53,25 @@ int look=-8;       // First-person look elevation
 double t=0;        // Time within HW3's six-second passing loop
 int lastTime=0;    // Previous GLUT elapsed time, in milliseconds
 int paused=0;      // Pause the animation
+
 // Light values
-int light=1;       // Lighting on/off
-int sunlight=1;    // Sun and directional sunlight on/off
-const float sunPosition[]={-6,6,-8,0}; // w=0: parallel rays from the sun
-int move=1;        // Move the light independently of the passing animation
-int distance=6;    // Light orbit radius
-int smooth=1;      // Smooth/flat shading
-int local=1;       // Local viewer for specular calculations
-int ambient=20;
-int diffuse=80;
-int specular=30;
-int shininess=4;   // Shininess power of two
-float shiny=16;
-double zh=90;      // Light azimuth (fractional degrees for elapsed-time updates)
-float ylight=4;    // Light elevation
-int obj=0;        //  Scene/opbject selection
+int light     =   1;  // Lighting
+int distance  =   5;  // Light distance
+int smooth    =   1;  // Smooth/Flat shading
+int local     =   0;  // Local Viewer Model
+int ambient   =  10;  // Ambient intensity (%)
+int diffuse   =  50;  // Diffuse intensity (%)
+int specular  =   0;  // Specular intensity (%)
+int shininess =   0;  // Shininess (power of two)
+float shiny   =   1;  // Shininess (value)
+int zh        =  90;  // Light azimuth
+float ylight  =   0;  // Elevation of light
+int obj       =   0;  //  Scene/opbject selection
+int sunlight  =   1;  // Sun and directional sunlight on/off
+int move      =   1;  // Move the light independently of the passing animation
+
+const float sunPosition[]={-6,6,-8,0}; 
+
 
 //  Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.14159265/180))
@@ -387,14 +390,12 @@ static void straps(double z)
       for (int j=0;j<4;j++)
       {
          int k=(j+1)%4;
-         //  The original strap side winding points inward; reverse the normal.
          Normal(handle[a][j],handle[a+1][k],handle[a+1][j]);
          glVertex3dv(handle[a][j]);
          glVertex3dv(handle[a+1][j]);
          glVertex3dv(handle[a+1][k]);
          glVertex3dv(handle[a][k]);
       }
-   //  Both ends of the arch face down toward the bag.
    glNormal3f(0,-1,0);
    for (int j=3;j>=0;j--) glVertex3dv(handle[0][j]);
    for (int j=0;j<4;j++) glVertex3dv(handle[12][j]);
@@ -796,7 +797,7 @@ int main(int argc,char* argv[])
    //  Request 1000 x 600 pixel window
    glutInitWindowSize(1000,600);
    //  Create the window
-   glutCreateWindow("Jay Vakil - HW5 Lighting");
+   glutCreateWindow("Jay Vakil: HW5 Lighting");
 #ifdef USEGLEW
    //  Initialize GLEW
    if (glewInit()!=GLEW_OK) Fatal("Error initializing GLEW\n");
