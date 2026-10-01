@@ -1,5 +1,5 @@
 /*
- *  HW5 Jay Vakil - lighting added to the HW4 scene (ex13)
+ *  HW5 Jay Vakil 
  *
  *  
  *  Key bindings:
@@ -9,14 +9,14 @@
  *  WASD       Walk in first-person mode
  *  0          Reset view angle
  *  r          Restart the animation
- *  l          Toggle lighting (ex13)
+ *  l          Toggle lighting
  *  u          Toggle the sun and sunlight
- *  p          Pause/resume the light orbit (ex13 move toggle, remapped from m)
+ *  p          Pause/resume the light orbit
  *  < / >      Move light around the scene and stop its automatic orbit
  *  [ / ]      Lower/raise light
- *  b/B        Decrease/increase ambient light (ex13 a/A, remapped for WASD)
- *  v/V        Decrease/increase diffuse light (ex13 d/D, remapped for WASD)
- *  c/C        Decrease/increase specular light (ex13 s/S, remapped for WASD)
+ *  b/B        Decrease/increase ambient light
+ *  v/V        Decrease/increase diffuse light
+ *  c/C        Decrease/increase specular light
  *  n/N        Decrease/increase shininess
  *  F1/F2/F3   Toggle smooth shading / local viewer / light radius
  *  o/O        Next/previous object inspection view; cycle back to the scene
@@ -53,8 +53,7 @@ int look=-8;       // First-person look elevation
 double t=0;        // Time within HW3's six-second passing loop
 int lastTime=0;    // Previous GLUT elapsed time, in milliseconds
 int paused=0;      // Pause the animation
-
-//  Light values from ex13 (intensities are percentages).
+// Light values
 int light=1;       // Lighting on/off
 int sunlight=1;    // Sun and directional sunlight on/off
 const float sunPosition[]={-6,6,-8,0}; // w=0: parallel rays from the sun
@@ -69,7 +68,7 @@ int shininess=4;   // Shininess power of two
 float shiny=16;
 double zh=90;      // Light azimuth (fractional degrees for elapsed-time updates)
 float ylight=4;    // Light elevation
-int obj=0;         // ex13 inspection: scene, player, bag, cone, ball
+int obj=0;        //  Scene/opbject selection
 
 //  Cosine and Sine in degrees
 #define Cos(x) (cos((x)*3.14159265/180))
@@ -238,7 +237,6 @@ static void Vertex(double th,double ph,int color)
 {
    if (color)
       glColor3f(Cos(th)*Cos(th) , Sin(ph)*Sin(ph) , Sin(th)*Sin(th));
-   //  ex13's Vertex/Canopy: a unit sphere's position is its outward normal.
    glNormal3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
    glVertex3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
 }
@@ -271,7 +269,6 @@ static void cylinder(double x,double y,double z,double r,double length,double an
    glBegin(GL_QUAD_STRIP);
    for (int a=0;a<=360;a+=15)
    {
-      //  Radial side normal, as on ex13's airplane fuselage.
       glNormal3d(Cos(a),0,Sin(a));
       glVertex3d(Cos(a),0,Sin(a));
       glVertex3d(Cos(a),-1,Sin(a));
@@ -348,8 +345,6 @@ static void cone(double x,double z)
    glPushMatrix();
    glTranslated(x,0,z);
    glColor3f(1,0.4,0);
-   //  ex13's airplane nose: slope-aware side normals and a midpoint apex normal.
-   //  Radius=0.2, height=0.45, so the normal is (height*cos, radius, -height*sin).
    glBegin(GL_TRIANGLES);
    for (int a=0;a<360;a+=30)
    {
@@ -508,11 +503,9 @@ void display(void)
       gluLookAt(Ex,Ey,Ez, 0,1.3,0, 0,Cos(ph),0);
    }
 
-   //  Lighting setup from ex13, after the camera so the light stays in the world.
    glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
    glDisable(GL_LIGHTING);
    glDisable(GL_LIGHT1);
-   //  Like ex13's light marker, the sun uses our handmade sphere without lighting.
    if (sunlight && obj==0)
    {
       glColor3f(1.0,0.85,0.2);
@@ -523,7 +516,6 @@ void display(void)
       float Ambient[]  = {0.01*ambient,0.01*ambient,0.01*ambient,1};
       float Diffuse[]  = {0.01*diffuse,0.01*diffuse,0.01*diffuse,1};
       float Specular[] = {0.01*specular,0.01*specular,0.01*specular,1};
-      //  Bring the orbit closer for ex13-style individual object inspection.
       double radius=obj ? 0.5*distance : distance;
       float Position[] = {radius*Cos(zh),ylight,radius*Sin(zh),1};
       //  Draw the marker without lighting, using the existing handmade sphere.
@@ -539,8 +531,6 @@ void display(void)
       glLightfv(GL_LIGHT0,GL_DIFFUSE,Diffuse);
       glLightfv(GL_LIGHT0,GL_SPECULAR,Specular);
       glLightfv(GL_LIGHT0,GL_POSITION,Position);
-      //  Reuse ex13's light setup for a second, warm directional source.
-      //  A position with w=0 models sunlight arriving along parallel rays.
       if (sunlight)
       {
          float SunAmbient[] ={0.08,0.07,0.05,1};
@@ -552,7 +542,6 @@ void display(void)
          glLightfv(GL_LIGHT1,GL_SPECULAR,SunSpecular);
          glLightfv(GL_LIGHT1,GL_POSITION,sunPosition);
       }
-      //  ex13's white specular material, with no object emission.
       float white[]={1,1,1,1};
       float black[]={0,0,0,1};
       glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,shiny);
@@ -560,7 +549,6 @@ void display(void)
       glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
    }
 
-   //  ex13's scene/object selection; the complete scene remains unchanged.
    if (obj==0)
    {
       pitch();
@@ -590,7 +578,6 @@ void display(void)
    else if (obj==4)
       sphere(0,1.3,0,1,1);
 
-   //  ex13: text and overlays are not lit.
    glDisable(GL_LIGHTING);
    glDisable(GL_COLOR_MATERIAL);
    glDisable(GL_DEPTH_TEST);
@@ -649,7 +636,6 @@ void special(int key,int x,int y)
 {
    (void)x;
    (void)y;
-   //  Lighting options from ex13; existing camera controls follow.
    if (key==GLUT_KEY_F1) smooth=1-smooth;
    else if (key==GLUT_KEY_F2) local=1-local;
    else if (key==GLUT_KEY_F3) distance=(distance==6) ? 3 : 6;
@@ -723,7 +709,6 @@ void key(unsigned char ch,int x,int y)
       else if (fov<100)
          fov++;
    }
-   //  ex13's lighting controls, remapped where necessary to preserve HW4 keys.
    else if (ch=='l' || ch=='L') light=1-light;
    else if (ch=='u' || ch=='U') sunlight=1-sunlight;
    else if (ch=='p' || ch=='P') move=1-move;
@@ -745,7 +730,6 @@ void key(unsigned char ch,int x,int y)
    else if (ch=='o' || ch=='O')
    {
       obj=(obj+(ch=='o' ? 1 : 4))%5;
-      //  Frame the selected object for inspection, as in ex13.
       mode=0;
       dim=obj ? 3 : 11;
    }
@@ -767,7 +751,6 @@ void key(unsigned char ch,int x,int y)
       else if (ch=='a' || ch=='A') walk(0,-0.25);
       else if (ch=='d' || ch=='D') walk(0,0.25);
    }
-   //  ex13: translate shininess power to value (-1 means no highlight).
    shiny=shininess<0 ? 0 : pow(2.0,shininess);
    //  Reproject
    Project();
@@ -797,8 +780,6 @@ void idle()
    double dt=(now-lastTime)/1000.0;
    lastTime=now;
    if (!paused) t=fmod(t+dt,6);
-   //  ex13's orbit, integrated with HW4's elapsed time so stopping/resuming
-   //  does not jump. Keep idle registered for the independent player animation.
    if (move) zh=fmod(zh+45*dt,360);
    glutPostRedisplay();
 }
