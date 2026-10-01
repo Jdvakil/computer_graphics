@@ -46,7 +46,7 @@ make
 | `n` / `N` | Decrease / increase material shininess |
 | F1 | Toggle smooth / flat shading |
 | F2 | Toggle the local-viewer specular lighting model |
-| F3 | Toggle light orbit radius between 6 and 3 units |
+| F3 | Toggle light orbit radius between 5 and 1 units, as in ex13 |
 | `o` / `O` | Next / previous inspection view |
 
 A golden sun above the far side of the pitch adds warm directional sunlight
@@ -70,8 +70,9 @@ cone, and ball are enlarged for inspection. The orbit radius is halved in these
 views. Cycle back to Scene to restore the complete layout and its default zoom.
 The camera and lighting controls remain available while inspecting an object.
 
-For a clear normal-vector demonstration, press `o` twice to inspect the bag,
-press `p` to stop the light, and use `<` / `>` to compare its sides and handles.
+For a clear normal-vector demonstration from startup, press `u` to turn off the
+sun, press `o` twice to inspect the bag, press `p` to stop the light, and use
+`<` / `>` to compare its sides and handles under the moving point light alone.
 Use `l` to compare the lit result with the original vertex colors.
 
 ## Exercise code and normals
@@ -80,6 +81,25 @@ Most additions follow **exercise 13**: the light variables, intensity arrays,
 `GL_LIGHT0`, `GL_NORMALIZE`, color materials, specular/shininess settings,
 `glShadeModel`, the light marker, orbital motion, and scene/object selection.
 Lighting is configured after the camera transform and disabled before drawing text.
+
+The values come from the source appropriate to each part of the program:
+
+| Values | Source or reason |
+| --- | --- |
+| `th=20`, `ph=30`, `fov=55`, `dim=11`, eye `(0,1.7,8)` | Unchanged HW4 camera defaults |
+| Object dimensions, positions, colors, and six-second passing loop | Unchanged HW4 scene |
+| `light=1`, `move=1`, `distance=5`, `smooth=1`, `local=0`, `zh=90` | ex13 defaults |
+| F3 distance choices `1` / `5` | ex13's distance control |
+| Ambient/diffuse/specular `20/80/30` | Adjusted from ex13's `10/50/0` for this scene's appearance and visible highlights |
+| `shininess=4`, `shiny=16` | ex13's `2^shininess` rule, using a more concentrated highlight than its default `1` |
+| `ylight=4` | Places the light above the players; ex13's `0` would place it at ground level |
+| Orbit speed `45` degrees/second, manual steps `5` degrees and `0.25` height units | Slower automatic motion and larger manual steps for this larger scene; ex13 uses `90`, `1`, and `0.1` |
+| Sun direction and warm light colors | Additional sunlight requested for HW5, using the same OpenGL light-setting calls |
+
+These scene-specific values preserve HW5's appearance while retaining ex13's
+lighting calculations. The bag, straps, and cone require normals derived from
+their own vertices and dimensions; copying normals for unrelated exercise objects
+would not give the correct illumination.
 
 Exercise 13's cube and sphere normals are applied to the existing geometry. Its
 `SolidPlane()` fuselage and nose provide the radial-cylinder and sloped-cone normal

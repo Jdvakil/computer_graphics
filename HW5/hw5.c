@@ -54,21 +54,24 @@ double t=0;        // Time within HW3's six-second passing loop
 int lastTime=0;    // Previous GLUT elapsed time, in milliseconds
 int paused=0;      // Pause the animation
 
-//  Light values from ex13 (intensities are percentages).
-int light=1;       // Lighting on/off
-int sunlight=1;    // Sun and directional sunlight on/off
+//  Light controls and equations from ex13; keep HW4's camera/scene values above.
+int light=1;       // Lighting (ex13)
+int one=1;         // Cube bottom-normal unit (ex13; keep outward-facing)
+int sunlight=1;    // Additional sun requested for this scene
 const float sunPosition[]={-6,6,-8,0}; // w=0: parallel rays from the sun
-int move=1;        // Move the light independently of the passing animation
-int distance=6;    // Light orbit radius
-int smooth=1;      // Smooth/flat shading
-int local=1;       // Local viewer for specular calculations
+int move=1;        // Move light (ex13), independently of the passing animation
+int distance=5;    // Light distance (ex13's 1/5 toggle)
+int smooth=1;      // Smooth/flat shading (ex13)
+int local=0;       // Local Viewer Model (ex13)
+//  Scene-specific intensities: keep the existing appearance and visible highlights.
+//  ex13 starts at 10/50/0 and shiny=1; this larger scene uses 20/80/30 and shiny=16.
 int ambient=20;
 int diffuse=80;
 int specular=30;
 int shininess=4;   // Shininess power of two
 float shiny=16;
 double zh=90;      // Light azimuth (fractional degrees for elapsed-time updates)
-float ylight=4;    // Light elevation
+float ylight=4;    // Above the players; ex13's y=0 is at this scene's ground level
 int obj=0;         // ex13 inspection: scene, player, bag, cone, ball
 
 //  Cosine and Sine in degrees
@@ -218,7 +221,7 @@ static void cube(double x,double y,double z,
    glVertex3f(+1,+1,-1);
    glVertex3f(-1,+1,-1);
    //  Bottom
-   glNormal3f(0,-1,0);
+   glNormal3f(0,-one,0);
    glColor3d(0.55*r,0.55*g,0.55*b);
    glVertex3f(-1,-1,-1);
    glVertex3f(+1,-1,-1);
@@ -652,7 +655,7 @@ void special(int key,int x,int y)
    //  Lighting options from ex13; existing camera controls follow.
    if (key==GLUT_KEY_F1) smooth=1-smooth;
    else if (key==GLUT_KEY_F2) local=1-local;
-   else if (key==GLUT_KEY_F3) distance=(distance==6) ? 3 : 6;
+   else if (key==GLUT_KEY_F3) distance=(distance==1) ? 5 : 1;
    else if (mode==2)
    {
       if (key==GLUT_KEY_RIGHT) yaw+=5;
