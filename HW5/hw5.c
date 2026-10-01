@@ -56,14 +56,14 @@ int paused=0;      // Pause the animation
 
 // Light values
 int light     =   1;  // Lighting
-int distance  =   5;  // Light distance
+int distance  =   6;  // Light distance
 int smooth    =   1;  // Smooth/Flat shading
-int local     =   0;  // Local Viewer Model
+int local     =   1;  // Local Viewer Model
 int ambient   =  10;  // Ambient intensity (%)
-int diffuse   =  50;  // Diffuse intensity (%)
-int specular  =   0;  // Specular intensity (%)
+int diffuse   =  80;  // Diffuse intensity (%)
+int specular  =  30;  // Specular intensity (%)
 int shininess =   0;  // Shininess (power of two)
-float shiny   =   1;  // Shininess (value)
+float shiny   =  16;  // Shininess (value)
 int zh        =  90;  // Light azimuth
 float ylight  =   0;  // Elevation of light
 int obj       =   0;  //  Scene/opbject selection
