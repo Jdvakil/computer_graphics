@@ -45,7 +45,7 @@ make
 | `n` / `N` | Decrease / increase material shininess |
 | F1 | Toggle smooth / flat shading |
 | F2 | Toggle the local-viewer specular lighting model |
-| F3 | Toggle light orbit radius between 5 and 1 units, as in ex13 |
+| F3 | Toggle light orbit radius between 5 and 1 units |
 | `o` / `O` | Next / previous inspection view |
 
 Most of the code has been reused from `ex10.c`, `ex12.c`, `ex13.c`, and `hw4.c`. 
