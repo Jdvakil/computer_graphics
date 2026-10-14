@@ -72,7 +72,7 @@
  int obj=0;          //  Scene/opbject selection
 
  //  Texture names and enable switch follow ex14/ex15.
- enum { GRAIN, CHECKER, BALL, SKIN, NTEX };
+ enum { GRAIN, CHECKER, BALL, SKIN, GRASS, NTEX };
  unsigned int texture[NTEX];
  int textured=1;
  
@@ -250,13 +250,14 @@ unsigned int LoadTexBMP(const char* file)
        glTexCoord2d(s,t);
  }
 
- /* Load the original exercise BMPs once, after the GLUT context exists. */
+ /* Load the BMP textures once, after the GLUT context exists. */
  static void LoadTextures(void)
  {
     texture[GRAIN]=LoadTexBMP("crate.bmp");
     texture[CHECKER]=LoadTexBMP("block.bmp");
     texture[BALL]=LoadTexBMP("img3.bmp");
     texture[SKIN]=LoadTexBMP("img5.bmp");
+    texture[GRASS]=LoadTexBMP("grass.bmp");
     glBindTexture(GL_TEXTURE_2D,0);
  }
 
@@ -512,18 +513,34 @@ unsigned int LoadTexBMP(const char* file)
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(1,1);
     glNormal3f(0,1,0);
-    glColor3f(0.12,0.36,0.20);
-    Texture(GRAIN);
+    if (textured)
+    {
+       //  ex13/ex15 material lighting, multiplied by the grass via GL_MODULATE.
+       //  White ambient/diffuse plus both lights saturates before texturing.
+       //  Use a neutral, matte material so the moving light remains visible.
+       const float grassAmbient[]={0.20,0.20,0.20,1};
+       const float grassDiffuse[]={0.75,0.75,0.75,1};
+       const float grassSpecular[]={0,0,0,1};
+       glPushAttrib(GL_LIGHTING_BIT);
+       glDisable(GL_COLOR_MATERIAL);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,grassAmbient);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,grassDiffuse);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,grassSpecular);
+       glColor3f(1,1,1);  // Original image colors when lighting is switched off.
+    }
+    else
+       glColor3f(0.12,0.36,0.20);
+    Texture(GRASS);
     //  Repeat ex14's textured square at one-world-unit scale on the same plane.
     glBegin(GL_QUADS);
     if (textured)
        for (int x=-7;x<7;x++)
           for (int z=-6;z<6;z++)
           {
-             MaterialCoord(GRAIN,0,0); glVertex3d(x,0,z);
-             MaterialCoord(GRAIN,0,1); glVertex3d(x,0,z+1);
-             MaterialCoord(GRAIN,1,1); glVertex3d(x+1,0,z+1);
-             MaterialCoord(GRAIN,1,0); glVertex3d(x+1,0,z);
+             MaterialCoord(GRASS,0,0); glVertex3d(x,0,z);
+             MaterialCoord(GRASS,0,1); glVertex3d(x,0,z+1);
+             MaterialCoord(GRASS,1,1); glVertex3d(x+1,0,z+1);
+             MaterialCoord(GRASS,1,0); glVertex3d(x+1,0,z);
           }
     else
     {
@@ -534,6 +551,8 @@ unsigned int LoadTexBMP(const char* file)
        glVertex3d(7,0,-6);
     }
     glEnd();
+    if (textured)
+       glPopAttrib();  // Restore HW5's material settings for the other objects.
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_POLYGON_OFFSET_FILL);
  
