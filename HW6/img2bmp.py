@@ -1,6 +1,6 @@
 from PIL import Image
 
-filename = "hehe.jpg"
+filename = "leather.jpg"
 
 with Image.open(filename) as image:
     image.convert("RGB").resize(

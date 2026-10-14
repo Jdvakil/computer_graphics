@@ -72,7 +72,7 @@
  int obj=0;          //  Scene/opbject selection
 
  //  Texture names and enable switch follow ex14/ex15.
- enum { GRAIN, CHECKER, BALL, SKIN, GRASS, NTEX };
+ enum { GRAIN, CHECKER, BALL, SKIN, GRASS, SUN, LEATHER, NTEX };
  unsigned int texture[NTEX];
  int textured=1;
  
@@ -221,7 +221,7 @@ unsigned int LoadTexBMP(const char* file)
 
  /*
   *  ex14/ex15: bind a texture and modulate it with the lit object color.
-  *  tex=-1 is reserved for the sun and light-position marker.
+  *  tex=-1 is reserved for the untextured moving light marker.
   */
  static void Texture(int tex)
  {
@@ -239,6 +239,7 @@ unsigned int LoadTexBMP(const char* file)
   *  Select material regions with coordinates; all exercise BMPs stay unchanged.
   *  Grain: a plain region inside ex14's crate, excluding its border/brace.
   *  Skin: a small forehead region of ex15's img5, excluding facial features.
+  *  Sun: the central surface region, excluding the image's checkerboard backdrop.
   */
  static void MaterialCoord(int tex,double s,double t)
  {
@@ -246,6 +247,8 @@ unsigned int LoadTexBMP(const char* file)
        glTexCoord2d((100+30*s)/256.0,(166+60*t)/256.0);
     else if (tex==SKIN)
        glTexCoord2d((45+15*s)/128.0,(83+20*t)/128.0);
+    else if (tex==SUN)
+       glTexCoord2d(0.25+0.5*s,0.25+0.5*t);
     else
        glTexCoord2d(s,t);
  }
@@ -255,9 +258,17 @@ unsigned int LoadTexBMP(const char* file)
  {
     texture[GRAIN]=LoadTexBMP("crate.bmp");
     texture[CHECKER]=LoadTexBMP("block.bmp");
-    texture[BALL]=LoadTexBMP("img3.bmp");
+    texture[BALL]=LoadTexBMP("ball.bmp");
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
     texture[SKIN]=LoadTexBMP("img5.bmp");
     texture[GRASS]=LoadTexBMP("grass.bmp");
+    texture[SUN]=LoadTexBMP("sun.bmp");
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+    texture[LEATHER]=LoadTexBMP("leather.bmp");
+    //  Mirror adjacent tiles so the photograph's opposite edges never meet.
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_MIRRORED_REPEAT);
     glBindTexture(GL_TEXTURE_2D,0);
  }
 
@@ -408,30 +419,55 @@ unsigned int LoadTexBMP(const char* file)
  {
     if (color)
        glColor3f(Cos(th)*Cos(th) , Sin(ph)*Sin(ph) , Sin(th)*Sin(th));
-    //  Longitude wraps 0..1; latitude maps the poles to 0 and 1.
-    //  Offset the ball graphic by half a turn so it faces the initial camera.
-    MaterialCoord(tex,th/360.0+(tex==BALL ? 0.5 : 0),(ph+90)/180.0);
+    //  The ball image is a photograph: project its circular surface onto both
+    //  hemispheres. Shared coordinates meet continuously around their boundary.
+    //  Stay inside the photographed ball to exclude the black background.
+    if (tex==BALL)
+       glTexCoord2d(0.51+0.45*Sin(th)*Cos(ph),0.50+0.45*Sin(ph));
+    else
+       //  Longitude wraps 0..1; latitude maps the poles to 0 and 1.
+       MaterialCoord(tex,th/360.0,(ph+90)/180.0);
     glNormal3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
     glVertex3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
  }
  
  static void sphere(double x,double y,double z,double r,int color,int tex)
  {
+    //  Keep the existing handmade mesh, using finer steps for the soccer ball.
+    int step=(tex==BALL) ? 5 : 30;
+    if (tex==BALL)
+    {
+       //  ex15 material setup: neutral color and a modest plastic highlight.
+       const float ballAmbient[]={0.20,0.20,0.20,1};
+       const float ballDiffuse[]={0.70,0.70,0.70,1};
+       const float ballSpecular[]={0.25,0.25,0.25,1};
+       glPushAttrib(GL_LIGHTING_BIT);
+       glDisable(GL_COLOR_MATERIAL);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,ballAmbient);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,ballDiffuse);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,ballSpecular);
+       glColor3f(1,1,1);
+    }
     Texture(tex);
     glPushMatrix();
     glTranslated(x,y,z);
     glScaled(r,r,r);
-    for (int ph=-90;ph<90;ph+=30)
+    //  Roll with the existing passing motion; inspection mode stays stationary.
+    if (tex==BALL && obj==0)
+       glRotated(-(x+1.8)*180/(3.14159265*r),0,0,1);
+    for (int ph=-90;ph<90;ph+=step)
     {
        glBegin(GL_QUAD_STRIP);
-       for (int th=0;th<=360;th+=30)
+       for (int th=0;th<=360;th+=step)
        {
           Vertex(th,ph,color,tex);
-          Vertex(th,ph+30,color,tex);
+          Vertex(th,ph+step,color,tex);
        }
        glEnd();
     }
     glPopMatrix();
+    if (tex==BALL)
+       glPopAttrib();
     glDisable(GL_TEXTURE_2D);
  }
  
@@ -646,73 +682,167 @@ unsigned int LoadTexBMP(const char* file)
  
  static void duffel(double x,double z,double size,double angle)
  {
-    const double profile[9][2]={
+    //  Keep HW5's control profile and taper, rounding their corners three times.
+    enum { NP=72, NR=56 };
+    double profile[NP][2]={
        {-0.6,0},{0.6,0},{0.8,0.2},{0.8,0.6},{0.5,0.9},
        {0,1},{-0.5,0.9},{-0.8,0.6},{-0.8,0.2}
     };
     const double along[5]={-0.75,-0.55,0,0.55,0.75};
     const double width[5]={0.65,1,1.05,1,0.65};
     const double height[5]={0.65,0.9,1,0.9,0.65};
-    double v[5][9][3];
+    //  Sections contain x, base height, width scale, and height scale.
+    //  The two collapsed end sections close the bag with rounded rims.
+    double section[NR][4]={{-0.75,0.2,0,0}};
+    int np=9,nr=7;
     for (int i=0;i<5;i++)
-       for (int j=0;j<9;j++)
+    {
+       section[i+1][0]=along[i];
+       section[i+1][2]=width[i];
+       section[i+1][3]=height[i];
+    }
+    section[6][0]=0.75;
+    section[6][1]=0.2;
+    for (int pass=0;pass<3;pass++)
+    {
+       double roundedProfile[NP][2];
+       double roundedSection[NR][4];
+       for (int j=0;j<np;j++)
+          for (int c=0;c<2;c++)
+          {
+             int k=(j+1)%np;
+             roundedProfile[2*j][c]=0.75*profile[j][c]+0.25*profile[k][c];
+             roundedProfile[2*j+1][c]=0.25*profile[j][c]+0.75*profile[k][c];
+          }
+       for (int c=0;c<4;c++)
        {
-          v[i][j][0]=along[i];
-          v[i][j][1]=0.65*height[i]*profile[j][1];
-          v[i][j][2]=0.42*width[i]*profile[j][0];
+          roundedSection[0][c]=section[0][c];
+          roundedSection[2*nr-1][c]=section[nr-1][c];
+          for (int i=0;i<nr-1;i++)
+          {
+             roundedSection[2*i+1][c]=0.75*section[i][c]+0.25*section[i+1][c];
+             roundedSection[2*i+2][c]=0.25*section[i][c]+0.75*section[i+1][c];
+          }
        }
- 
-    Texture(GRAIN);
+       np*=2;
+       nr*=2;
+       for (int j=0;j<np;j++)
+          for (int c=0;c<2;c++) profile[j][c]=roundedProfile[j][c];
+       for (int i=0;i<nr;i++)
+          for (int c=0;c<4;c++) section[i][c]=roundedSection[i][c];
+    }
+
+    double v[NR][NP][3],normal[NR][NP][3];
+    double perimeter[NR][NP+1]={{0}},uv[NR][NP+1][2];
+    for (int i=0;i<nr;i++)
+       for (int j=0;j<np;j++)
+       {
+          v[i][j][0]=section[i][0];
+          v[i][j][1]=section[i][1]+0.65*section[i][3]*profile[j][1];
+          v[i][j][2]=0.42*section[i][2]*profile[j][0];
+       }
+    //  Cross the two surface tangents to get a shared outward vertex normal.
+    //  GL_NORMALIZE handles normalization after the bag's scale transform.
+    for (int i=1;i<nr-1;i++)
+       for (int j=0;j<np;j++)
+       {
+          int prev=(j+np-1)%np,next=(j+1)%np;
+          double a[3],b[3];
+          for (int c=0;c<3;c++)
+          {
+             a[c]=v[i+1][j][c]-v[i-1][j][c];
+             b[c]=v[i][next][c]-v[i][prev][c];
+          }
+          normal[i][j][0]=a[1]*b[2]-a[2]*b[1];
+          normal[i][j][1]=a[2]*b[0]-a[0]*b[2];
+          normal[i][j][2]=a[0]*b[1]-a[1]*b[0];
+       }
+    //  Preserve distance-based leather mapping and close two mirrored repeats.
+    for (int i=1;i<nr-1;i++)
+       for (int j=0;j<np;j++)
+       {
+          int k=(j+1)%np;
+          double dy=v[i][k][1]-v[i][j][1];
+          double dz=v[i][k][2]-v[i][j][2];
+          perimeter[i][j+1]=perimeter[i][j]+sqrt(dy*dy+dz*dz);
+       }
+    double density=2/perimeter[nr/2][np];
+    for (int i=1;i<nr-1;i++)
+       for (int j=0;j<=np;j++)
+       {
+          int k=j%np;
+          double dx=v[i][k][0]-v[i-1][k][0];
+          double dy=v[i][k][1]-v[i-1][k][1];
+          double dz=v[i][k][2]-v[i-1][k][2];
+          uv[i][j][0]=(i==1 ? 0 : uv[i-1][j][0])+density*sqrt(dx*dx+dy*dy+dz*dz);
+          uv[i][j][1]=2*perimeter[i][j]/perimeter[i][np];
+       }
+
+    if (textured)
+    {
+       //  ex15 material setup: let the leather image supply its own brown color.
+       const float leatherAmbient[]={0.20,0.20,0.20,1};
+       const float leatherDiffuse[]={0.75,0.75,0.75,1};
+       const float leatherSpecular[]={0.20,0.20,0.20,1};
+       glPushAttrib(GL_LIGHTING_BIT);
+       glDisable(GL_COLOR_MATERIAL);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,leatherAmbient);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,leatherDiffuse);
+       glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,leatherSpecular);
+       glColor3f(1,1,1);
+    }
+    Texture(LEATHER);
     glPushMatrix();
     glTranslated(x,0,z);
     glRotated(angle,0,1,0);
     glScaled(size,size,size);
-    glColor3f(0.55,0.22,0.12);
-    glBegin(GL_TRIANGLES);
-    for (int i=0;i<4;i++)
-       for (int j=0;j<9;j++)
-       {
-          int k=(j+1)%9;
-          Normal(v[i][j],v[i+1][j],v[i+1][k]);
-          MaterialCoord(GRAIN,(along[i]+0.75)/1.5,j/9.0);
-          glVertex3dv(v[i][j]);
-          MaterialCoord(GRAIN,(along[i+1]+0.75)/1.5,j/9.0);
-          glVertex3dv(v[i+1][j]);
-          MaterialCoord(GRAIN,(along[i+1]+0.75)/1.5,(j+1)/9.0);
-          glVertex3dv(v[i+1][k]);
-          Normal(v[i][j],v[i+1][k],v[i][k]);
-          MaterialCoord(GRAIN,(along[i]+0.75)/1.5,j/9.0);
-          glVertex3dv(v[i][j]);
-          MaterialCoord(GRAIN,(along[i+1]+0.75)/1.5,(j+1)/9.0);
-          glVertex3dv(v[i+1][k]);
-          MaterialCoord(GRAIN,(along[i]+0.75)/1.5,(j+1)/9.0);
-          glVertex3dv(v[i][k]);
-       }
-    glEnd();
-    glColor3f(0.42,0.16,0.08);
+    for (int i=1;i<nr-2;i++)
+    {
+       //  Planar end-panel mapping avoids pinching the leather at each pole.
+       int endPanel=(section[i+1][0]<=-0.60 || section[i][0]>=0.60);
+       if (!textured)
+          glColor3f(endPanel ? 0.42 : 0.55,endPanel ? 0.16 : 0.22,endPanel ? 0.08 : 0.12);
+       glBegin(GL_QUAD_STRIP);
+       for (int j=0;j<=np;j++)
+          for (int row=i;row<=i+1;row++)
+          {
+             int k=j%np;
+             glNormal3dv(normal[row][k]);
+             if (endPanel)
+                MaterialCoord(LEATHER,0.5+density*v[row][k][2],density*v[row][k][1]);
+             else
+                MaterialCoord(LEATHER,uv[row][j][0],uv[row][j][1]);
+             glVertex3dv(v[row][k]);
+          }
+       glEnd();
+    }
+    if (!textured) glColor3f(0.42,0.16,0.08);
     for (int end=0;end<2;end++)
     {
-       int i=end?4:0;
+       int pole=end ? nr-1 : 0;
+       int ring=end ? nr-2 : 1;
        glBegin(GL_TRIANGLE_FAN);
        glNormal3f(end ? 1 : -1,0,0);
-       //  Planar cap mapping: across the bag width and up its profile.
-       MaterialCoord(GRAIN,0.5,0.2/(0.65*height[i]));
-       glVertex3d(along[i],0.2,0);
-       for (int j=0;j<=9;j++)
+       MaterialCoord(LEATHER,0.5,density*v[pole][0][1]);
+       glVertex3dv(v[pole][0]);
+       for (int j=0;j<=np;j++)
        {
-          int k=(end?9-j:j)%9;
-          MaterialCoord(GRAIN,0.5+profile[k][0]/1.6,profile[k][1]);
-          glVertex3dv(v[i][k]);
+          int k=(end ? np-j : j)%np;
+          glNormal3dv(normal[ring][k]);
+          MaterialCoord(LEATHER,0.5+density*v[ring][k][2],density*v[ring][k][1]);
+          glVertex3dv(v[ring][k]);
        }
        glEnd();
     }
- 
+    //  Restore the original material before drawing the tan, grain-textured straps.
+    if (textured)
+       glPopAttrib();
     straps(-0.20);
     straps(0.20);
     glPopMatrix();
     glDisable(GL_TEXTURE_2D);
  }
- 
+
  /*
   *  OpenGL (GLUT) calls this routine to display the scene
   */
@@ -766,8 +896,12 @@ unsigned int LoadTexBMP(const char* file)
     glDisable(GL_LIGHT1);
     if (sunlight && obj==0)
     {
-       glColor3f(1.0,0.85,0.2);
-       sphere(sunPosition[0],sunPosition[1],sunPosition[2],0.7,0,-1);
+       //  Draw the sun unlit so its texture stays bright like a light source.
+       if (textured)
+          glColor3f(1,1,1);
+       else
+          glColor3f(1.0,0.85,0.2);
+       sphere(sunPosition[0],sunPosition[1],sunPosition[2],0.7,0,SUN);
     }
     if (light)
     {
@@ -819,7 +953,7 @@ unsigned int LoadTexBMP(const char* file)
        human(2.7,-0.45,1.05,180,0,otherRight,1);
        human(-2,-5,1,-90,0,0,2);
        duffel(-0.7,-2.7,0.9,20);
-       sphere(ballX,0.3,-0.22,0.3,1,BALL);
+       sphere(ballX,0.3,-0.22,0.3,0,BALL);
  
     }
     else if (obj==1)
@@ -834,7 +968,7 @@ unsigned int LoadTexBMP(const char* file)
        glPopMatrix();
     }
     else if (obj==4)
-       sphere(0,1.3,0,1,1,BALL);
+       sphere(0,1.3,0,1,0,BALL);
  
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_LIGHTING);

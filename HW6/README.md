@@ -63,7 +63,7 @@ Optional polish below is not an additional assignment requirement.
   that already contain their intended colors, then add deliberate tints. Keep
   `GL_MODULATE` so lighting still affects textures. Check especially the current
   dark green pitch tint and the skin tint, which multiply the image colors.
-- [ ] Remove the ball's procedural rainbow coloring when using a realistic ball
+- [x] Remove the ball's procedural rainbow coloring when using a realistic ball
   texture: set a neutral color before drawing it and use `color=0` in both ball
   `sphere()` calls. Otherwise `Vertex()` changes the color at every vertex.
 - [ ] Remove or reduce `cube()`'s fixed face-darkening multipliers when lighting
@@ -109,8 +109,8 @@ Optional polish below is not an additional assignment requirement.
   terminal for messages from `ErrCheck()` while exercising the scene.
 - [ ] Use `o` / `O` to inspect every object from multiple angles and zoom levels.
   Check bottoms, caps, seams, and strap ends. All physical surfaces should be
-  textured; the sun and moving light marker can retain their justified solid
-  colors. Check that objects meet the ground and animation does not introduce
+  textured, including the sun; the moving light marker retains its solid
+  color. Check that objects meet the ground and animation does not introduce
   distracting intersections or floating parts.
 - [ ] Test all four lighting/texture combinations with `l` and `t`, then leave
   both enabled by default. Pause the players with Space and the light with `p`;
@@ -142,7 +142,8 @@ make
 ./hw6
 ```
 
-Submit `hw6.c`, `makefile`, this README, and all four BMP files together.
+Submit `hw6.c`, `makefile`, this README, and the seven runtime BMP files together:
+`crate.bmp`, `block.bmp`, `ball.bmp`, `img5.bmp`, `grass.bmp`, `sun.bmp`, and `leather.bmp`.
 The makefile builds `hw6` directly from source. There are no external assets or
 prebuilt libraries required beyond the system OpenGL/GLU/GLUT libraries.
 
@@ -191,21 +192,26 @@ behavior.
 
 ## BMP sources and mapping
 
-Every BMP is an unchanged copy from the exercises. All are uncompressed 24-bit
-images with power-of-two dimensions, and none exceeds 256 by 256 pixels.
+Three runtime BMPs are unchanged copies from the exercises; grass, ball, sun, and
+leather use the supplied images. All are uncompressed 24-bit images with power-of-two dimensions, and none
+exceeds 512 by 512 pixels.
 
 | File | Original source | Dimensions | Use |
 | --- | --- | --- | --- |
-| `crate.bmp` | `exercises/ex14/crate.bmp` | 256 x 256 | Grain detail on the pitch, shirts, trousers, shoes, bag, and straps |
+| `grass.bmp` | Supplied grass JPEG, resized and converted to BMP | 512 x 512 | Grass tiled across the pitch |
+| `sun.bmp` | `sun.jpg`, converted with `img2bmp.py` | 512 x 512 | Surface of the sun |
+| `leather.bmp` | Supplied `leather.jpg`, converted with `img2bmp.py` | 512 x 512 | Duffel body, both ends, and underside |
+| `crate.bmp` | `exercises/ex14/crate.bmp` | 256 x 256 | Grain detail on shirts, trousers, shoes, and tan bag straps |
 | `block.bmp` | `exercises/ex14/block.bmp` | 128 x 128 | Bright check pattern on the cones, including their bases |
-| `img3.bmp` | `exercises/ex15/img3.bmp` | 64 x 64 | Pi graphic wrapped around the existing colored ball |
+| `ball.bmp` | Supplied `ball.png`, converted with `img2bmp.py` | 512 x 512 | Soccer ball surface in the scene and inspection view |
 | `img5.bmp` | `exercises/ex15/img5.bmp` | 128 x 128 | A small skin-tone region for the heads and arms |
 
 The provided exercise images do not include grass or fabric photographs. Texture
 coordinates select a grain region inside the crate image without its border or
 cross-brace, and a skin-tone region of img5 without its facial features. This
 reuses the supplied images as material detail while keeping HW5's original colors.
-No BMP pixels are generated, edited, or replaced.
+The three runtime exercise BMPs retain their original pixels. `img3.bmp` is no
+longer loaded or required.
 
 Texture coordinates are supplied explicitly for every vertex of each textured
 surface, including cylinder/cone/bag caps and the solid strap ends:
@@ -213,19 +219,46 @@ surface, including cylinder/cone/bag caps and the solid strap ends:
 - Cube faces use ex15's four-corner square mapping.
 - The pitch repeats ex14's square mapping over one-unit patches on the same
   14-by-12 ground plane. The texture-off view uses HW5's original single quad.
-- Spheres map longitude around the image and latitude from pole to pole; the ball
-  image is offset half a turn so the graphic faces the initial camera.
+- Heads and the sun use longitude/latitude coordinates. The ball instead projects
+  the circular surface photographed in `ball.bmp` onto both hemispheres. It samples
+  within that disk to avoid the black background, with continuous coordinates at
+  the hemisphere boundary and poles. Both texture axes clamp to the image edges.
+  Since the source is a single photograph, the reverse repeats the design in
+  mirror image; this is an approximation, not an exact full-surface map of the
+  photographed ball. The source image also contains its original photographic
+  shading. A purpose-made sphere texture would be needed to remove those limits.
+- The ball uses a finer 5-degree handmade sphere mesh, radial normals, neutral
+  material colors, and a modest specular highlight. `GL_MODULATE` combines the
+  image with the scene lighting. It rolls as it travels between the players;
+  the inspection view keeps it stationary so the arrow keys can inspect all sides.
 - Cylinders wrap coordinates around the sides and along their length; their caps
   use ex14's circular mapping.
 - Cones use ex14's radial mapping, repeated twice across their diameter.
-- Bag triangles share coordinates along the bag's length and around its profile;
-  the profile seam reaches coordinate 1 instead of wrapping prematurely to 0.
-  Their end caps use planar coordinates.
-- Straps follow the arch and the four sides of each cross section, with separate
-  coordinates on the two end caps.
+- The bag body rounds HW5's original profile and taper with three passes of
+  corner cutting, producing 72 points around 56 sections including the closed
+  ends. Shared vertex normals come from the cross product of its two surface
+  tangents. This smooths both the silhouette and lighting across the body and
+  end rims; the F1 shading toggle remains available.
+- Bag coordinates follow measured edge lengths along its length and around each
+  cross section. Adjacent triangles share coordinates. Each profile covers two
+  mirrored repeats, so coordinates 0 and 2 meet at the lower edge with matching
+  texture values. `GL_MIRRORED_REPEAT` avoids abrupt joins between the photograph's
+  different opposite edges. The source BMP is unchanged.
+- Bag ends use planar coordinates at the central body's texture scale, meeting
+  the body at the end-panel boundaries without pinching at the closed ends.
+  Leather uses a neutral material and a modest specular reflection so its brown
+  image remains visible under the moving light. It is applied only to the body.
+  The straps retain their original tan color, grain texture, solid geometry, and
+  texture coordinates. Their original material settings are restored before drawing them.
+  Textures off restores the bag's original brown colors on the smoother body.
 
-The only untextured objects are the sun and moving light marker. They represent
-light sources and remain solid colors so their positions are easy to identify.
+The sun uses the existing sphere's longitude/latitude texture coordinates,
+sampling the central half of the image in each direction to exclude its baked-in
+checkerboard background. The BMP remains unchanged. It is drawn with lighting disabled and white color
+so its texture stays bright; the directional sunlight still illuminates the scene.
+`t` toggles its texture along with the other textures, restoring the original
+yellow sun when textures are off. `u` toggles both the sun and its sunlight.
+Only the moving light marker remains untextured so its position is easy to identify.
 All physical scene objects are textured by default. Texturing is disabled before
 screen text is drawn.
 
@@ -239,7 +272,8 @@ screen text is drawn.
 - **Exercise 15:** combining textures with lighting using `GL_MODULATE`, cube-face
   coordinates, and disabling texturing after drawing an object.
 - **Scene-specific additions:** choosing the source-image regions and extending
-  the exercise coordinate patterns to HW5's spheres, cylinders, bag, and straps.
+  the exercise coordinate patterns to HW5's spheres, cylinders, bag, and straps;
+  rounding the bag's control mesh and calculating its shared surface normals.
 
 The sphere drawing remains HW5's handmade mesh; ex15's `glutSolidSphere()` is not
 used. There are no GLU/GLUT object generators, pyramids, imported models, or
