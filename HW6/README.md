@@ -142,8 +142,9 @@ make
 ./hw6
 ```
 
-Submit `hw6.c`, `makefile`, this README, and the seven runtime BMP files together:
-`crate.bmp`, `block.bmp`, `ball.bmp`, `img5.bmp`, `grass.bmp`, `sun.bmp`, and `leather.bmp`.
+Submit `hw6.c`, `makefile`, this README, and the eight runtime BMP files together:
+`crate.bmp`, `block.bmp`, `ball.bmp`, `img5.bmp`, `grass.bmp`, `sun.bmp`, `leather.bmp`,
+and `argentina_jersey.bmp`.
 The makefile builds `hw6` directly from source. There are no external assets or
 prebuilt libraries required beyond the system OpenGL/GLU/GLUT libraries.
 
@@ -192,8 +193,8 @@ behavior.
 
 ## BMP sources and mapping
 
-Three runtime BMPs are unchanged copies from the exercises; grass, ball, sun, and
-leather use the supplied images. All are uncompressed 24-bit images with power-of-two dimensions, and none
+Three runtime BMPs are unchanged copies from the exercises; grass, ball, sun,
+leather, and the Argentina jersey use the supplied images. All are uncompressed 24-bit images with power-of-two dimensions, and none
 exceeds 512 by 512 pixels.
 
 | File | Original source | Dimensions | Use |
@@ -201,7 +202,8 @@ exceeds 512 by 512 pixels.
 | `grass.bmp` | Supplied grass JPEG, resized and converted to BMP | 512 x 512 | Grass tiled across the pitch |
 | `sun.bmp` | `sun.jpg`, converted with `img2bmp.py` | 512 x 512 | Surface of the sun |
 | `leather.bmp` | Supplied `leather.jpg`, converted with `img2bmp.py` | 512 x 512 | Duffel body, both ends, and underside |
-| `crate.bmp` | `exercises/ex14/crate.bmp` | 256 x 256 | Grain detail on shirts, trousers, shoes, and tan bag straps |
+| `argentina_jersey.bmp` | Supplied Argentina shirt BMP | 512 x 512 | Shirts on both players, the coach, and the player inspection view |
+| `crate.bmp` | `exercises/ex14/crate.bmp` | 256 x 256 | Grain detail on trousers, shoes, and tan bag straps |
 | `block.bmp` | `exercises/ex14/block.bmp` | 128 x 128 | Bright check pattern on the cones, including their bases |
 | `ball.bmp` | Supplied `ball.png`, converted with `img2bmp.py` | 512 x 512 | Soccer ball surface in the scene and inspection view |
 | `img5.bmp` | `exercises/ex15/img5.bmp` | 128 x 128 | A small skin-tone region for the heads and arms |
@@ -217,6 +219,12 @@ Texture coordinates are supplied explicitly for every vertex of each textured
 surface, including cylinder/cone/bag caps and the solid strap ends:
 
 - Cube faces use ex15's four-corner square mapping.
+- Player and coach shirts use a separate jersey texture. The chest faces local +X and
+  samples the shirt photograph's central torso, keeping its badges upright and
+  excluding the background. The back, sides, top, and bottom sample plain fabric
+  below the badges. A neutral matte material preserves the blue and white under
+  lighting. All three people wear the jersey; `t` restores their original
+  blue/red/gray shirt colors when textures are disabled.
 - The pitch repeats ex14's square mapping over one-unit patches on the same
   14-by-12 ground plane. The texture-off view uses HW5's original single quad.
 - Heads and the sun use longitude/latitude coordinates. The ball instead projects
@@ -234,23 +242,23 @@ surface, including cylinder/cone/bag caps and the solid strap ends:
 - Cylinders wrap coordinates around the sides and along their length; their caps
   use ex14's circular mapping.
 - Cones use ex14's radial mapping, repeated twice across their diameter.
-- The bag body rounds HW5's original profile and taper with three passes of
-  corner cutting, producing 72 points around 56 sections including the closed
-  ends. Shared vertex normals come from the cross product of its two surface
-  tangents. This smooths both the silhouette and lighting across the body and
-  end rims; the F1 shading toggle remains available.
-- Bag coordinates follow measured edge lengths along its length and around each
-  cross section. Adjacent triangles share coordinates. Each profile covers two
-  mirrored repeats, so coordinates 0 and 2 meet at the lower edge with matching
-  texture values. `GL_MIRRORED_REPEAT` avoids abrupt joins between the photograph's
-  different opposite edges. The source BMP is unchanged.
-- Bag ends use planar coordinates at the central body's texture scale, meeting
-  the body at the end-panel boundaries without pinching at the closed ends.
+- The bag uses HW5's original nine-point profile, five tapered sections,
+  triangles, face normals, and solid end caps. Its faceted silhouette matches
+  that earlier implementation. The separate corner-cutting and smooth-normal
+  algorithms have been removed to keep the geometry directly based on HW5.
+- Bag coordinates map its length to 0..1 and its profile to 0..2 using the
+  per-vertex texture approach in ex14/ex15. Adjacent triangles share coordinates;
+  the profile's final vertex reaches 2 instead of restarting at 0. Two mirrored
+  repeats make the texture meet at the profile seam. This simple mapping follows
+  profile indices, so texture scale varies on differently sized profile edges.
+  The source BMP is unchanged.
+- Bag ends use planar coordinates across their width and height. Their texture
+  orientation is independent of the side mapping.
   Leather uses a neutral material and a modest specular reflection so its brown
   image remains visible under the moving light. It is applied only to the body.
   The straps retain their original tan color, grain texture, solid geometry, and
   texture coordinates. Their original material settings are restored before drawing them.
-  Textures off restores the bag's original brown colors on the smoother body.
+  Textures off restores the bag's original brown colors and HW5 geometry.
 
 The sun uses the existing sphere's longitude/latitude texture coordinates,
 sampling the central half of the image in each direction to exclude its baked-in
@@ -264,16 +272,47 @@ screen text is drawn.
 
 ## Code sources
 
-- **HW5:** existing geometry, normals, scene values, animation, cameras, navigation,
-  lighting controls, sun, and object-inspection modes.
-- **Exercise 14:** `Reverse()` and `LoadTexBMP()` copied from `loadtexbmp.c`, texture
-  binding/enabling, texture-coordinate repetition, and square/circle/cone patterns.
-  The loader uses HW5's existing `Fatal()` and `ErrCheck()` directly.
-- **Exercise 15:** combining textures with lighting using `GL_MODULATE`, cube-face
-  coordinates, and disabling texturing after drawing an object.
-- **Scene-specific additions:** choosing the source-image regions and extending
-  the exercise coordinate patterns to HW5's spheres, cylinders, bag, and straps;
-  rounding the bag's control mesh and calculating its shared surface normals.
+Most of the runtime implementation is reused from the earlier homework and
+exercises. HW5 is the immediate source for the scene built through the earlier
+assignments. The table distinguishes unchanged functions from adaptations and
+HW6-specific additions; using the same OpenGL API alone does not make new code
+a verbatim copy of an exercise.
+
+| HW6 implementation | Local source | Reuse and changes |
+| --- | --- | --- |
+| `Print`, `ErrCheck`, `Fatal` | [HW5/hw5.c](../HW5/hw5.c) | Function definitions unchanged apart from comments/formatting. |
+| `Project`, `Normal`, `walk`, `special`, `reshape`, `idle` | [HW5/hw5.c](../HW5/hw5.c) | Function definitions unchanged apart from comments/formatting. |
+| `key`, `display`, `main` | [HW5/hw5.c](../HW5/hw5.c) | Existing controls, animation, camera setup, lights, scene arrangement, and callbacks retained; texture toggle, loading, materials, and textured draw calls added. |
+| `cube` | [HW5/hw5.c](../HW5/hw5.c), [ex15/ex15.c](../exercises/ex15/ex15.c) | HW5 vertices/normals with ex15's four-corner UV layout; jersey selection and cloth material added. |
+| `Vertex`, `sphere` | [HW5/hw5.c](../HW5/hw5.c) | Original manually generated sphere and radial normals; texture coordinates, finer ball steps, ball material, and rolling rotation added. |
+| `cylinder`, `cone` | [HW5/hw5.c](../HW5/hw5.c), [ex14/ex14.c](../exercises/ex14/ex14.c) | HW5 geometry/normals with adapted wrap and radial texture coordinates. |
+| `shoe`, `human`, `straps` | [HW5/hw5.c](../HW5/hw5.c) | Original assembly, dimensions, and geometry; texture IDs and explicit strap coordinates added. |
+| `pitch` | [HW5/hw5.c](../HW5/hw5.c), [ex14/ex14.c](../exercises/ex14/ex14.c) | Original ground dimensions/normal and polygon offset; ex14's textured-square pattern repeated over unit patches with a grass material. |
+| `duffel` | [HW5/hw5.c](../HW5/hw5.c) | Original profile, sections, triangles, `Normal` calls, and cap geometry restored; leather coordinates and material added. |
+| `Reverse`, `LoadTexBMP` | [ex14/loadtexbmp.c](../exercises/ex14/loadtexbmp.c) | Both function definitions copied unchanged. Credit: Willem A. (Vlakkies) Schreuder, CSCIx229. |
+| `Texture`, `LoadTextures` | [ex14/ex14.c](../exercises/ex14/ex14.c), [ex15/ex15.c](../exercises/ex15/ex15.c) | Adapted enabling, binding, `GL_MODULATE`, loading after context creation, and disabling; filenames, texture IDs, helper organization, and wrap choices are specific to HW6. |
+| Material setup | [ex13/ex13.c](../exercises/ex13/ex13.c), [ex15/ex15.c](../exercises/ex15/ex15.c) | Uses the exercises' `glMaterialfv` approach; per-material values and `glPushAttrib`/`glPopAttrib` isolation are HW6 additions. |
+
+The remaining scene-specific implementation consists of `MaterialCoord` and
+`CubeCoord` image crops, UV formulas for the actual surfaces, the ball photograph
+projection/rolling angle, material values, and texture configuration. These are
+adaptations needed to apply the selected images to this scene and are not claimed
+as code copied from the exercises. All three Argentina jerseys, the grass, ball,
+sun, leather bag, existing lighting, and camera controls are retained.
+
+Source comparison on 2026-10-14: ignoring comments, whitespace, and lines with
+only punctuation, 572 of 778 substantive lines (about 74%) have an ordered match
+in C/C++ source/header files under HW1-HW5 or `exercises`. Requiring matching runs
+of at least three substantive lines gives 487 of 778 (about 63%). This measures
+textual overlap, not authorship or an instructor's grading rule; adapted calls
+with extra texture arguments can differ even when their geometry comes from HW5.
+The nine unchanged HW5 functions and the two loader functions above were also
+compared as complete function definitions. A forced rebuild with `make -B`
+completed without warnings; interactive appearance still needs a visual check.
+
+`img2bmp.py` is a separate, HW6-specific asset conversion helper. It is not part
+of the OpenGL runtime, is not included in those counts, and is not needed to run
+the submitted BMP files.
 
 The sphere drawing remains HW5's handmade mesh; ex15's `glutSolidSphere()` is not
 used. There are no GLU/GLUT object generators, pyramids, imported models, or
