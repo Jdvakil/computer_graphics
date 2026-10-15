@@ -16,7 +16,7 @@
  *  WASD       Walk in first-person mode
  *  0          Reset view angle
  *  r          Restart the animation
- *  t          Toggle textures (lighting and original HW5 colors stay active)
+ *  t          Toggle textures 
  *  l          Toggle lighting
  *  u          Toggle the sun and sunlight
  *  p          Pause/resume the light orbit
@@ -128,12 +128,8 @@
  }
  
  
- /*
-  *  BMP loader copied from exercises/ex14/loadtexbmp.c.
-  *  Willem A. (Vlakkies) Schreuder, CSCIx229.
-  *  Uses the existing local Fatal/ErrCheck instead of including CSCIx229.h.
-  */
 //
+//  Load texture from BMP file
 //  Reverse n bytes
 //
 static void Reverse(void* x,const int n)
@@ -226,12 +222,8 @@ unsigned int LoadTexBMP(const char* file)
    return texture;
 }
 
- /*
-  *  ex14/ex15: bind a texture and modulate it with the lit object color.
-  *  tex=-1 is reserved for the untextured moving light marker.
-  */
- static void Texture(int tex)
- {
+
+static void Texture(int tex){
     if (textured && tex>=0)
     {
        glEnable(GL_TEXTURE_2D);
@@ -264,7 +256,6 @@ unsigned int LoadTexBMP(const char* file)
        glTexCoord2d(s,t);
  }
 
- /* Adapt ex14/ex15's initialization to this scene's images and wrap modes. */
  static void LoadTextures(void)
  {
     texture[GRAIN]=LoadTexBMP("crate.bmp");
@@ -287,7 +278,7 @@ unsigned int LoadTexBMP(const char* file)
  }
 
  /*
-  *  Set projection (unchanged from HW5/hw5.c)
+  *  Set projection
   */
  static void Project()
  {
@@ -350,7 +341,6 @@ unsigned int LoadTexBMP(const char* file)
  }
 
  /*
-  *  HW5 cube geometry/normals with ex15's face UV layout and HW6 materials.
   *  Draw a cube
   *     at (x,y,z)
   *     dimensions (dx,dy,dz)
@@ -363,8 +353,6 @@ unsigned int LoadTexBMP(const char* file)
     int jersey=textured && tex==JERSEY;
     if (jersey)
     {
-       // HW6 values/state isolation, using ex13/ex15's glMaterialfv approach.
-       // Neutral cloth preserves the blue/white image under either light setting.
        const float clothAmbient[]={0.20,0.20,0.20,1};
        const float clothDiffuse[]={0.75,0.75,0.75,1};
        const float clothSpecular[]={0,0,0,1};
@@ -381,7 +369,6 @@ unsigned int LoadTexBMP(const char* file)
     glTranslated(x,y,z);
     glRotated(th,0,1,0);
     glScaled(dx,dy,dz);
-    //  ex15: one texture rectangle on each cube face.
     Texture(tex);
     //  Cube
     glBegin(GL_QUADS);
@@ -468,13 +455,9 @@ unsigned int LoadTexBMP(const char* file)
  {
     if (color)
        glColor3f(Cos(th)*Cos(th) , Sin(ph)*Sin(ph) , Sin(th)*Sin(th));
-    //  The ball image is a photograph: project its circular surface onto both
-    //  hemispheres. Shared coordinates meet continuously around their boundary.
-    //  Stay inside the photographed ball to exclude the black background.
     if (tex==BALL)
        glTexCoord2d(0.51+0.45*Sin(th)*Cos(ph),0.50+0.45*Sin(ph));
     else
-       //  Longitude wraps 0..1; latitude maps the poles to 0 and 1.
        MaterialCoord(tex,th/360.0,(ph+90)/180.0);
     glNormal3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
     glVertex3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
@@ -482,12 +465,9 @@ unsigned int LoadTexBMP(const char* file)
  
  static void sphere(double x,double y,double z,double r,int color,int tex)
  {
-    //  Keep the existing handmade mesh, using finer steps for the soccer ball.
     int step=(tex==BALL) ? 5 : 30;
     if (tex==BALL)
     {
-       //  HW6 values/state isolation using ex13/ex15's material calls.
-       //  Neutral color and a modest plastic highlight suit the ball photograph.
        const float ballAmbient[]={0.20,0.20,0.20,1};
        const float ballDiffuse[]={0.70,0.70,0.70,1};
        const float ballSpecular[]={0.25,0.25,0.25,1};
@@ -502,7 +482,6 @@ unsigned int LoadTexBMP(const char* file)
     glPushMatrix();
     glTranslated(x,y,z);
     glScaled(r,r,r);
-    //  Roll with the existing passing motion; inspection mode stays stationary.
     if (tex==BALL && obj==0)
        glRotated(-(x+1.8)*180/(3.14159265*r),0,0,1);
     for (int ph=-90;ph<90;ph+=step)
@@ -578,7 +557,6 @@ unsigned int LoadTexBMP(const char* file)
  
   
     const double colors[3][3]={{0.18,0.42,0.80},{0.80,0.22,0.18},{0.55,0.57,0.60}};
-    // Both players and the coach wear Argentina jerseys.
     cube(0,1.9,0, 0.25,0.4,0.35, 0,
          colors[shirt][0],colors[shirt][1],colors[shirt][2],JERSEY);
     glColor3f(0.85,0.62,0.43);
@@ -603,10 +581,6 @@ unsigned int LoadTexBMP(const char* file)
     glNormal3f(0,1,0);
     if (textured)
     {
-       //  HW6 values/state isolation using ex13/ex15's material calls.
-       //  The grass is multiplied by the lighting via ex15's GL_MODULATE.
-       //  White ambient/diffuse plus both lights saturates before texturing.
-       //  Use a neutral, matte material so the moving light remains visible.
        const float grassAmbient[]={0.20,0.20,0.20,1};
        const float grassDiffuse[]={0.75,0.75,0.75,1};
        const float grassSpecular[]={0,0,0,1};
@@ -615,12 +589,11 @@ unsigned int LoadTexBMP(const char* file)
        glMaterialfv(GL_FRONT_AND_BACK,GL_AMBIENT,grassAmbient);
        glMaterialfv(GL_FRONT_AND_BACK,GL_DIFFUSE,grassDiffuse);
        glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,grassSpecular);
-       glColor3f(1,1,1);  // Original image colors when lighting is switched off.
+       glColor3f(1,1,1);
     }
     else
        glColor3f(0.12,0.36,0.20);
     Texture(GRASS);
-    //  Repeat ex14's textured square at one-world-unit scale on the same plane.
     glBegin(GL_QUADS);
     if (textured)
        for (int x=-7;x<7;x++)
@@ -633,7 +606,6 @@ unsigned int LoadTexBMP(const char* file)
           }
     else
     {
-       //  Retain HW5's original ground rendering for the texture-off comparison.
        glVertex3d(-7,0,-6);
        glVertex3d(-7,0,6);
        glVertex3d(7,0,6);
@@ -641,7 +613,7 @@ unsigned int LoadTexBMP(const char* file)
     }
     glEnd();
     if (textured)
-       glPopAttrib();  // Restore HW5's material settings for the other objects.
+       glPopAttrib();
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_POLYGON_OFFSET_FILL);
  
@@ -651,7 +623,6 @@ unsigned int LoadTexBMP(const char* file)
  static void cone(double x,double z)
  {
     Texture(CHECKER);
-    //  ex14 repetition: two texture repeats across the cone diameter.
     glPushMatrix();
     glTranslated(x,0,z);
     glColor3f(1,0.4,0);
@@ -735,8 +706,6 @@ unsigned int LoadTexBMP(const char* file)
  
  static void duffel(double x,double z,double size,double angle)
  {
-    // HW5/hw5.c: original profile, five sections, triangles, caps, and normals.
-    // HW6 adds leather coordinates using ex14/ex15's per-vertex texture pattern.
     const double profile[9][2]={
        {-0.6,0},{0.6,0},{0.8,0.2},{0.8,0.6},{0.5,0.9},
        {0,1},{-0.5,0.9},{-0.8,0.6},{-0.8,0.2}
@@ -755,7 +724,6 @@ unsigned int LoadTexBMP(const char* file)
 
     if (textured)
     {
-       // HW6 material values using ex13/ex15's glMaterialfv approach.
        const float leatherAmbient[]={0.20,0.20,0.20,1};
        const float leatherDiffuse[]={0.75,0.75,0.75,1};
        const float leatherSpecular[]={0.20,0.20,0.20,1};
@@ -811,7 +779,7 @@ unsigned int LoadTexBMP(const char* file)
     }
 
     if (textured)
-       glPopAttrib();  // Restore the HW5 material before drawing the straps.
+       glPopAttrib();
     straps(-0.20);
     straps(0.20);
     glPopMatrix();
@@ -871,7 +839,6 @@ unsigned int LoadTexBMP(const char* file)
     glDisable(GL_LIGHT1);
     if (sunlight && obj==0)
     {
-       //  Draw the sun unlit so its texture stays bright like a light source.
        if (textured)
           glColor3f(1,1,1);
        else
@@ -885,7 +852,6 @@ unsigned int LoadTexBMP(const char* file)
        float Specular[] = {0.01*specular,0.01*specular,0.01*specular,1};
        double radius=obj ? 0.5*distance : distance;
        float Position[] = {radius*Cos(zh),ylight,radius*Sin(zh),1};
-       //  Draw the marker without lighting, using the existing handmade sphere.
        glColor3f(1,1,1);
        sphere(Position[0],Position[1],Position[2],0.12,0,-1);
        glEnable(GL_NORMALIZE);
