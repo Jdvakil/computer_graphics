@@ -1,13 +1,5 @@
 /*
- *  HW6 Jay Vakil - textures added to HW5 
- *
- *  Code sources (see README.md for the function-by-function source map):
- *  HW5/hw5.c: scene geometry, normals, animation, cameras, controls and lighting.
- *  exercises/ex14/loadtexbmp.c: Reverse and LoadTexBMP, copied unchanged.
- *  exercises/ex14/ex14.c: adapted texture selection, square and radial mapping.
- *  exercises/ex15/ex15.c: adapted lit textures and cube-face UV layout.
- *  HW6-specific: image crops/UVs, material values/state isolation, texture setup,
- *  and the ball's finer sphere steps, photograph projection and rolling angle.
+ *  HW6 Jay Vakil - textures
  *  
  *  Key bindings:
  *  m          Cycle orthogonal, perspective and first person
@@ -917,7 +909,7 @@ static void Texture(int tex){
     glDisable(GL_DEPTH_TEST);
     glColor3f(1,1,1);
     glWindowPos2i(10,150);
-    Print("t: textures %s (modulated with lighting)",textured ? "On" : "Off");
+    Print("t: textures (on/off)",textured ? "On" : "Off");
     glWindowPos2i(10,130);
     Print("u: sun/sunlight %s",sunlight ? (light ? "On" : "Visible (lighting off)") : "Off");
     glWindowPos2i(10,110);
@@ -1133,7 +1125,7 @@ static void Texture(int tex){
     //  Request 1000 x 600 pixel window
     glutInitWindowSize(1000,600);
     //  Create the window
-    glutCreateWindow("Jay Vakil - HW6 Lighting and Textures");
+    glutCreateWindow("Jay Vakil - HW6 Textures");
  #ifdef USEGLEW
     //  Initialize GLEW
     if (glewInit()!=GLEW_OK) Fatal("Error initializing GLEW\n");
@@ -1148,7 +1140,7 @@ static void Texture(int tex){
     glutKeyboardFunc(key);
     //  Tell GLUT to call "idle" when the program is idle
     glutIdleFunc(idle);
-    //  ex14/ex15: load BMPs once after creating the OpenGL context.
+    //  Load the textures
     LoadTextures();
     ErrCheck("textures");
     lastTime=glutGet(GLUT_ELAPSED_TIME);
